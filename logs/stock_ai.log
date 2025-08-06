@@ -446,3 +446,10 @@
 2025-08-06 01:24:55,745 - src.models.lstm_predictor - WARNING - High validation loss detected: 2.1287 - model may be poor quality
 2025-08-06 01:24:56,545 - src.models.lstm_predictor - ERROR - Model quality validation failed: Model overfitting detected: Val R² 0.159 vs Test R² -0.343
 2025-08-06 01:24:56,545 - src.models.lstm_predictor - INFO - Cleaning up poor quality model files...
+2025-08-06 16:05:50,711 - src.data.collector - INFO - Fetching fresh data for AAPL
+2025-08-06 16:05:53,092 - src.data.collector - INFO - Running data validation pipeline for AAPL
+2025-08-06 16:05:53,092 - src.data.validator - INFO - Starting validation for AAPL with 502 rows
+2025-08-06 16:05:53,104 - src.data.validator - INFO - Validation complete for AAPL: 502 clean rows
+2025-08-06 16:05:53,105 - src.data.validator - INFO - Pipeline complete for AAPL: 502 -> 502 rows
+2025-08-06 16:05:53,105 - src.data.collector - INFO - Data pipeline: 502 -> 502 rows
+2025-08-06 16:05:53,377 - src.data.collector - INFO - Successfully fetched data for AAPL

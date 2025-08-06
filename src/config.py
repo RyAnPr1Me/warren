@@ -8,6 +8,18 @@ from dataclasses import dataclass
 from typing import Optional
 from pathlib import Path
 
+# Load environment variables immediately when module is imported
+def _load_env_variables():
+    """Load environment variables from .env file at module import time"""
+    from dotenv import load_dotenv
+    
+    env_file = Path('.env')
+    if env_file.exists():
+        load_dotenv(env_file)
+
+# Load environment variables when module is imported
+_load_env_variables()
+
 
 @dataclass
 class APIConfig:
@@ -125,8 +137,11 @@ class Config:
     
     def _load_env_file(self):
         """Load environment variables from .env file"""
+        from dotenv import load_dotenv
+        
         env_file = Path('.env')
         if env_file.exists():
+            load_dotenv(env_file)
             with open(env_file) as f:
                 for line in f:
                     line = line.strip()
