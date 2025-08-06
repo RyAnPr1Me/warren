@@ -10,8 +10,11 @@ import time
 from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler, QuantileTransformer
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense, Dropout, BatchNormalization
+from tensorflow.keras.models import Sequential, Model, load_model
+from tensorflow.keras.layers import (
+    LSTM, Dense, Dropout, BatchNormalization, Input,
+    MultiHeadAttention, LayerNormalization, GlobalAveragePooling1D
+)
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from tensorflow.keras import regularizers
@@ -90,18 +93,6 @@ class EnhancedLSTMPredictor:
         diversity_reward = -0.1 * pred_variance  # Negative to encourage variance
         
         return mse + diversity_reward
-        
-        # Model paths - ensure unique per ticker
-        self.model_path = config.model.model_data_path / f"{self.symbol}_enhanced_lstm.h5"
-        self.scaler_path = config.model.model_data_path / f"{self.symbol}_scaler.pkl"
-        self.feature_scaler_path = config.model.model_data_path / f"{self.symbol}_feature_scaler.pkl"
-        self.metrics_path = config.model.model_data_path / f"{self.symbol}_metrics.json"
-        
-        # Ensure model directory exists
-        config.model.model_data_path.mkdir(parents=True, exist_ok=True)
-        
-        self.data_collector = StockDataCollector()
-        self.training_metrics = {}
     
     def _cleanup_existing_models(self):
         """Remove any existing model files for this ticker"""
@@ -131,13 +122,17 @@ class EnhancedLSTMPredictor:
         test_r2 = metrics.get('test_r2', -999)
         val_rmse = metrics.get('val_rmse', float('inf'))
         
+        # Use config values for thresholds
+        min_r2_threshold = config.model.min_r2_score
+        max_overfitting_ratio = config.model.max_overfitting_ratio
+        
         # Check R² score threshold
-        if val_r2 < self.MIN_R2_SCORE:
-            return False, f"Validation R² ({val_r2:.3f}) below minimum threshold ({self.MIN_R2_SCORE})"
+        if val_r2 < min_r2_threshold:
+            return False, f"Validation R² ({val_r2:.3f}) below minimum threshold ({min_r2_threshold})"
         
         # Check if test performance is drastically worse than validation (overfitting)
-        # Reasonable threshold for detecting actual overfitting
-        if test_r2 < val_r2 - 0.5:  # Allow some variance but catch real overfitting
+        # Use config overfitting ratio
+        if test_r2 < val_r2 - (val_r2 / max_overfitting_ratio):
             return False, f"Model overfitting detected: Val R² {val_r2:.3f} vs Test R² {test_r2:.3f}"
         
         # Check if RMSE is reasonable (not more than 20% of current price)
@@ -375,15 +370,15 @@ class EnhancedLSTMPredictor:
         
         return df
     
-    def prepare_training_data(self, data: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def prepare_training_data(self, data: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
         """
-        Prepare enhanced multi-feature data for LSTM training with better validation
+        Prepare enhanced multi-feature data for LSTM training without data leakage
         
         Args:
-            data: DataFrame with OHLCV and technical features
+            data: DataFrame with OHLCV data
             
         Returns:
-            Tuple of (X_train, y_train, scaled_target)
+            Tuple of (X, y) with unscaled features and targets - scaling done later in training
         """
         # Prepare comprehensive features
         enhanced_data = self.prepare_features(data)
@@ -446,11 +441,8 @@ class EnhancedLSTMPredictor:
             feature_data = feature_data.drop(columns=zero_var_features)
             available_features = [f for f in available_features if f not in zero_var_features]
         
-        # Scale features using robust scaler to handle outliers better
-        # Feature scaler already initialized in __init__ with QuantileTransformer
-        
-        # Fit scaler and transform features
-        scaled_features = self.feature_scaler.fit_transform(feature_data.values)
+        # Store feature columns for later use in prediction
+        self.feature_columns = available_features
         
         # Create enhanced target variable - predict FUTURE returns with smoothing
         close_prices = enhanced_data['Close'].values.astype(float)
@@ -498,10 +490,7 @@ class EnhancedLSTMPredictor:
         
         # Align target with features by removing the last observation 
         # (we can't predict the return after the last day)
-        enhanced_data = enhanced_data.iloc[:-1].copy()
-        scaled_features = scaled_features[:-1]  # Remove last feature row
-        
-        # DON'T scale target yet - we'll do it after train/test split to avoid data leakage
+        feature_data = feature_data.iloc[:-1].copy()
         target_data = future_returns
         
         # Create sequences with improved validation
@@ -509,12 +498,15 @@ class EnhancedLSTMPredictor:
         
         # Ensure we have enough data
         min_length = self.sequence_length + 50  # Need at least 50 additional samples
-        if len(scaled_features) < min_length:
-            raise ValueError(f"Insufficient data: {len(scaled_features)} samples, need at least {min_length}")
+        if len(feature_data) < min_length:
+            raise ValueError(f"Insufficient data: {len(feature_data)} samples, need at least {min_length}")
         
-        for i in range(self.sequence_length, len(scaled_features)):
-            X.append(scaled_features[i-self.sequence_length:i])
-            y.append(target_data[i])  # Use unscaled target
+        # NO SCALING HERE - will be done after train/test split
+        features_array = feature_data.values
+        
+        for i in range(self.sequence_length, len(features_array)):
+            X.append(features_array[i-self.sequence_length:i])
+            y.append(target_data[i])
         
         X_array = np.array(X)
         y_array = np.array(y)
@@ -528,7 +520,7 @@ class EnhancedLSTMPredictor:
         
         logger.info(f"Prepared training data: {X_array.shape} features, {y_array.shape} targets")
         
-        return X_array, y_array, y_array  # Return unscaled targets
+        return X_array, y_array
     
     def _calculate_comprehensive_metrics(self, X_train: np.ndarray, y_train_scaled: np.ndarray, y_train_unscaled: np.ndarray,
                                        X_val: np.ndarray, y_val_scaled: np.ndarray, y_val_unscaled: np.ndarray,
@@ -579,7 +571,7 @@ class EnhancedLSTMPredictor:
         
         return metrics
     
-    def build_enhanced_model(self, input_shape: Tuple[int, int]) -> Sequential:
+    def build_enhanced_model(self, input_shape: Tuple[int, int]) -> Model:
         """
         Build proper LSTM model with attention mechanism for stock prediction
         
@@ -589,10 +581,6 @@ class EnhancedLSTMPredictor:
         Returns:
             Compiled Keras model with attention and proper capacity
         """
-        from tensorflow.keras.layers import MultiHeadAttention, LayerNormalization, GlobalAveragePooling1D
-        from tensorflow.keras.models import Model
-        from tensorflow.keras.layers import Input
-        
         # Use full config values for proper model size
         lstm_units = config.model.lstm_units
         dropout = config.model.dropout_rate
@@ -679,16 +667,16 @@ class EnhancedLSTMPredictor:
                 return {'error': error_msg, 'samples': len(prices_df)}
             
             # Prepare enhanced training data
-            X, y, scaled_target = self.prepare_training_data(prices_df)
+            X, y = self.prepare_training_data(prices_df)
             
             if len(X) < 200:  # Early validation for insufficient training samples
                 error_msg = f"Insufficient training samples: {len(X)} (need at least 200)"
                 logger.error(error_msg)
                 return {'error': error_msg, 'samples': len(X)}
             
-            # Split into train/validation/test
-            train_size = int(len(X) * 0.7)
-            val_size = int(len(X) * 0.15)
+            # Use config values for splits
+            train_size = int(len(X) * (1.0 - config.model.validation_split - config.model.test_split))
+            val_size = int(len(X) * config.model.validation_split)
             
             X_train = X[:train_size]
             y_train = y[:train_size]
@@ -697,7 +685,18 @@ class EnhancedLSTMPredictor:
             X_test = X[train_size + val_size:]
             y_test = y[train_size + val_size:]
             
-            # CRITICAL: Scale targets using ONLY training data to avoid data leakage
+            # FIT scalers on training data ONLY to prevent data leakage
+            # 1. Fit feature scaler on training features
+            # Reshape X_train for feature scaling: (samples, timesteps, features) -> (samples*timesteps, features)
+            train_features_2d = X_train.reshape(-1, X_train.shape[2])
+            self.feature_scaler.fit(train_features_2d)
+            
+            # Scale all feature data using the training-fitted scaler
+            X_train_scaled = np.array([self.feature_scaler.transform(seq) for seq in X_train])
+            X_val_scaled = np.array([self.feature_scaler.transform(seq) for seq in X_val])
+            X_test_scaled = np.array([self.feature_scaler.transform(seq) for seq in X_test])
+            
+            # 2. Fit target scaler on training targets ONLY
             y_train_scaled = self.scaler.fit_transform(y_train.reshape(-1, 1)).flatten()
             y_val_scaled = self.scaler.transform(y_val.reshape(-1, 1)).flatten()
             y_test_scaled = self.scaler.transform(y_test.reshape(-1, 1)).flatten()
@@ -706,7 +705,7 @@ class EnhancedLSTMPredictor:
             logger.info(f"Target scaling - Train mean: {np.mean(y_train):.6f}, Train std: {np.std(y_train):.6f}")
             
             # Build enhanced model
-            self.model = self.build_enhanced_model((X.shape[1], X.shape[2]))
+            self.model = self.build_enhanced_model((X_train.shape[1], X_train.shape[2]))
             
             logger.info(f"Model architecture: {X.shape[1]} time steps, {X.shape[2]} features")
             
@@ -728,12 +727,12 @@ class EnhancedLSTMPredictor:
                 )
             ]
             
-            # Train model using scaled targets
+            # Train model using scaled data
             history = self.model.fit(
-                X_train, y_train_scaled,
+                X_train_scaled, y_train_scaled,
                 epochs=config.model.epochs,
                 batch_size=config.model.batch_size,
-                validation_data=(X_val, y_val_scaled),
+                validation_data=(X_val_scaled, y_val_scaled),
                 callbacks=callbacks,
                 verbose=1,
                 shuffle=True
@@ -746,9 +745,9 @@ class EnhancedLSTMPredictor:
             
             # Calculate comprehensive metrics
             metrics = self._calculate_comprehensive_metrics(
-                X_train, y_train_scaled, y_train, 
-                X_val, y_val_scaled, y_val, 
-                X_test, y_test_scaled, y_test, 
+                X_train_scaled, y_train_scaled, y_train, 
+                X_val_scaled, y_val_scaled, y_val, 
+                X_test_scaled, y_test_scaled, y_test, 
                 history
             )
             
@@ -824,7 +823,6 @@ class EnhancedLSTMPredictor:
                 self.feature_scaler_path.exists()):
                 
                 # Load model using tf.keras.models
-                from tensorflow.keras.models import load_model
                 self.model = load_model(self.model_path)
                 
                 # Load scalers
@@ -870,35 +868,46 @@ class EnhancedLSTMPredictor:
         # Prepare features for the recent data
         enhanced_recent = self.prepare_features(recent_data)
         
-        # Get feature columns (same reduced set as training for consistency)
-        feature_columns = [
-            # Basic price momentum (most predictive)
-            'Price_SMA5_Ratio', 'Price_SMA20_Ratio',
-            
-            # Returns (core predictive signal)
-            'Log_Return_1d', 'Log_Return_5d',
-            
-            # Basic volatility (risk measure)
-            'Volatility_10d',
-            
-            # Volume (market participation)
-            'Volume_Ratio',
-            
-            # Essential momentum indicator
-            'RSI_Normalized',
-            
-            # Trend following
-            'MACD_Normalized'
-        ]
+        # Use the same feature columns that were used in training
+        if not hasattr(self, 'feature_columns'):
+            # Fallback to the standard feature set if not stored
+            self.feature_columns = [
+                'Momentum_1d', 'Momentum_3d', 'Momentum_5d',
+                'Price_SMA5_Ratio', 'Price_SMA20_Ratio', 'SMA_Cross',
+                'Volatility_5d', 'Vol_Ratio',
+                'Volume_Ratio', 'Price_Volume',
+                'RSI_Normalized', 'MACD_Histogram', 'BB_Position',
+                'Returns_Lag1', 'Returns_Lag2'
+            ]
         
-        available_features = [col for col in feature_columns if col in enhanced_recent.columns]
+        # Ensure we only use features that exist in the data
+        available_features = [col for col in self.feature_columns if col in enhanced_recent.columns]
         
-        # Scale the features
+        if not available_features:
+            raise ValueError("No valid features found in recent data for prediction")
+        
+        # Scale the features using the same scaler from training
         feature_data = enhanced_recent[available_features].values
-        scaled_features = self.feature_scaler.transform(feature_data)
         
-        # Get the most recent sequence
-        current_sequence = scaled_features[-self.sequence_length:]
+        # Handle NaN/inf values
+        feature_data = np.nan_to_num(feature_data, nan=0.0, posinf=0.0, neginf=0.0)
+        
+        # Apply feature scaling consistently
+        if len(feature_data) >= self.sequence_length:
+            # Scale each sequence independently (as done in training)
+            scaled_sequences = []
+            for i in range(len(feature_data) - self.sequence_length + 1):
+                seq = feature_data[i:i + self.sequence_length]
+                scaled_seq = self.feature_scaler.transform(seq)
+                scaled_sequences.append(scaled_seq)
+            
+            # Use the most recent sequence for prediction
+            X_pred = np.array([scaled_sequences[-1]])
+        else:
+            raise ValueError(f"Insufficient recent data: need {self.sequence_length} samples, got {len(feature_data)}")
+        
+        # Get current price for calculations
+        current_price = recent_data['Close'].iloc[-1]
         
         # Generate predictions
         predictions = []
@@ -912,8 +921,8 @@ class EnhancedLSTMPredictor:
             
             # Multiple predictions with dropout enabled for uncertainty estimation
             for _ in range(num_samples):
-                X_pred = current_sequence.reshape(1, self.sequence_length, len(available_features))
-                pred = self.model.predict(X_pred, verbose=0)[0, 0]
+                if self.model is not None:
+                    pred = self.model.predict(X_pred, verbose=0)[0, 0]
                 day_predictions.append(pred)
             
             # Calculate mean and confidence interval

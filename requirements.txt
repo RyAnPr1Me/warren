@@ -1,5 +1,5 @@
 # Stock AI System Requirements
-# Phase 1: Foundation
+# Phases 1-3: Complete Implementation
 
 # Core data processing
 pandas>=2.0.0
@@ -16,6 +16,20 @@ finnhub-python>=2.4.19
 tensorflow>=2.13.0
 scikit-learn>=1.3.0
 keras>=2.13.0
+
+# Machine Learning - Advanced (Phase 3)
+xgboost>=1.7.0
+lightgbm>=4.0.0
+
+# Sentiment Analysis (Phase 3)
+textblob>=0.17.0
+vaderSentiment>=3.3.0
+nltk>=3.8.0
+
+# News processing (Phase 3) 
+newspaper3k>=0.2.8
+feedparser>=6.0.0
+beautifulsoup4>=4.12.0
 
 # Technical Analysis
 pandas-ta>=0.3.14b
@@ -48,4 +62,9 @@ pytz>=2023.3
 # Development
 pytest>=7.4.0
 black>=23.7.0
+flake8>=6.0.0
+mypy>=1.5.0
+
+# Additional ML utilities
+joblib>=1.3.0
 isort>=5.12.0

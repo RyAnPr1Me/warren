@@ -444,3 +444,5 @@
 2025-08-06 01:24:12,092 - src.models.lstm_predictor - INFO - Target scaling - Train mean: 0.013297, Train std: 0.057643
 2025-08-06 01:24:12,192 - src.models.lstm_predictor - INFO - Model architecture: 30 time steps, 15 features
 2025-08-06 01:24:55,745 - src.models.lstm_predictor - WARNING - High validation loss detected: 2.1287 - model may be poor quality
+2025-08-06 01:24:56,545 - src.models.lstm_predictor - ERROR - Model quality validation failed: Model overfitting detected: Val R² 0.159 vs Test R² -0.343
+2025-08-06 01:24:56,545 - src.models.lstm_predictor - INFO - Cleaning up poor quality model files...

@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "stock-ai"
-version = "0.1.0"
+version = "0.2.0"
 description = "AI-powered stock analysis and prediction system"
 authors = [{name = "Stock AI Team", email = "team@stockai.com"}]
 license = {text = "MIT"}

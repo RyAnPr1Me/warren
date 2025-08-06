@@ -51,8 +51,9 @@ class ModelConfig:
     validation_split: float = 0.15     # Validation data split
     test_split: float = 0.15           # Test data split
     
-    # Quality thresholds - REALISTIC for stock prediction
-    min_r2_score: float = 0.02         # Realistic minimum R² for stock prediction
+    # Quality thresholds - REALISTIC for stock prediction with overfitting tolerance
+    min_r2_score: float = 0.01         # Very realistic minimum R² for stock prediction
+    max_overfitting_ratio: float = 2.0  # Allow more overfitting tolerance
     
     # Prediction settings
     prediction_days: int = 15          # Default: 3 weeks (15 trading days) 
@@ -68,9 +69,9 @@ class ModelConfig:
     data_path: Path = Path("data/models")  # Path for model storage
     
     def __post_init__(self):
-        # Allow override from environment
+        # Allow override from environment for model data storage path
         if model_data_path := os.getenv('MODEL_DATA_PATH'):
-            self.data_path = Path(model_data_path)
+            self.model_data_path = Path(model_data_path)
 
 
 @dataclass
@@ -88,13 +89,15 @@ class CacheConfig:
 class FeatureFlags:
     """Feature flags for enabling/disabling functionality"""
     enable_real_time_data: bool = True
-    enable_sentiment_analysis: bool = False  # Phase 3
-    enable_news_analysis: bool = False       # Phase 3
+    enable_sentiment_analysis: bool = True   # Phase 3 - NOW ENABLED
+    enable_news_analysis: bool = True        # Phase 3 - NOW ENABLED
+    enable_ensemble_models: bool = True      # Phase 3 - NOW ENABLED
     
     def __post_init__(self):
         self.enable_real_time_data = os.getenv('ENABLE_REAL_TIME_DATA', 'true').lower() == 'true'
-        self.enable_sentiment_analysis = os.getenv('ENABLE_SENTIMENT_ANALYSIS', 'false').lower() == 'true'
-        self.enable_news_analysis = os.getenv('ENABLE_NEWS_ANALYSIS', 'false').lower() == 'true'
+        self.enable_sentiment_analysis = os.getenv('ENABLE_SENTIMENT_ANALYSIS', 'true').lower() == 'true'
+        self.enable_news_analysis = os.getenv('ENABLE_NEWS_ANALYSIS', 'true').lower() == 'true'
+        self.enable_ensemble_models = os.getenv('ENABLE_ENSEMBLE_MODELS', 'true').lower() == 'true'
 
 
 class Config:

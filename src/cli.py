@@ -107,6 +107,24 @@ Examples:
         ai_recommend_parser.add_argument('symbol', help='Stock ticker symbol')
         ai_recommend_parser.add_argument('--detailed', action='store_true', help='Show detailed analysis')
         
+        # Phase 3: Sentiment Analysis command
+        sentiment_parser = subparsers.add_parser('sentiment', help='Analyze news and social sentiment')
+        sentiment_parser.add_argument('symbol', help='Stock ticker symbol')
+        sentiment_parser.add_argument('--timeframe', default='7d', help='Analysis timeframe (7d, 30d)')
+        
+        # Phase 3: Ensemble Prediction command
+        ensemble_parser = subparsers.add_parser('ensemble', help='Train and use ensemble prediction models')
+        ensemble_parser.add_argument('symbol', help='Stock ticker symbol')
+        ensemble_parser.add_argument('--train', action='store_true', help='Train ensemble models')
+        ensemble_parser.add_argument('--predict', action='store_true', help='Make ensemble prediction')
+        ensemble_parser.add_argument('--days', type=int, default=15, help='Days to predict ahead')
+        
+        # Phase 3: Advanced Analysis command
+        advanced_parser = subparsers.add_parser('advanced', help='Comprehensive AI analysis with all Phase 3 features')
+        advanced_parser.add_argument('symbol', help='Stock ticker symbol')
+        advanced_parser.add_argument('--include-sentiment', action='store_true', help='Include sentiment analysis')
+        advanced_parser.add_argument('--use-ensemble', action='store_true', help='Use ensemble predictions')
+        
         # Model info command
         model_parser = subparsers.add_parser('model-info', help='Show model information and performance')
         model_parser.add_argument('symbol', help='Stock ticker symbol')
@@ -148,6 +166,12 @@ Examples:
                 self._handle_predict(parsed_args)
             elif parsed_args.command == 'ai-recommend':
                 self._handle_ai_recommend(parsed_args)
+            elif parsed_args.command == 'sentiment':
+                self._handle_sentiment(parsed_args)
+            elif parsed_args.command == 'ensemble':
+                self._handle_ensemble(parsed_args)
+            elif parsed_args.command == 'advanced':
+                self._handle_advanced(parsed_args)
             elif parsed_args.command == 'model-info':
                 self._handle_model_info(parsed_args)
             elif parsed_args.command == 'cleanup':
@@ -558,6 +582,177 @@ Examples:
             return f"${market_cap/1e6:.1f}M"
         else:
             return f"${market_cap:,.0f}"
+    
+    def _handle_sentiment(self, args):
+        """Handle sentiment analysis command - Phase 3"""
+        symbol = args.symbol.upper()
+        timeframe = args.timeframe
+        
+        print(f"\n🧠 Analyzing sentiment for {symbol} ({timeframe})...")
+        
+        try:
+            if not config.features.enable_sentiment_analysis:
+                print("❌ Sentiment analysis is not enabled in configuration")
+                return
+            
+            from src.analysis.sentiment import sentiment_engine
+            
+            # Get sentiment analysis
+            sentiment_metrics = sentiment_engine.analyze_sentiment(symbol, timeframe)
+            
+            print(f"\n📊 Sentiment Analysis Results for {symbol}:")
+            print(f"Overall Sentiment: {sentiment_metrics.overall_sentiment:.3f} (-1=Bearish, 1=Bullish)")
+            print(f"Confidence Level: {sentiment_metrics.confidence:.1%}")
+            print(f"News Articles: {sentiment_metrics.news_count}")
+            
+            print(f"\n📈 Sentiment Breakdown:")
+            print(f"   Bullish: {sentiment_metrics.bullish_ratio:.1%}")
+            print(f"   Bearish: {sentiment_metrics.bearish_ratio:.1%}")
+            print(f"   Neutral: {sentiment_metrics.neutral_ratio:.1%}")
+            
+            # Interpret sentiment
+            if sentiment_metrics.overall_sentiment > 0.2:
+                interpretation = "🟢 Positive sentiment suggests potential upward pressure"
+            elif sentiment_metrics.overall_sentiment < -0.2:
+                interpretation = "🔴 Negative sentiment suggests potential downward pressure"
+            else:
+                interpretation = "🟡 Neutral sentiment suggests mixed market opinion"
+            
+            print(f"\n💡 Interpretation: {interpretation}")
+            
+        except Exception as e:
+            print(f"❌ Error analyzing sentiment: {e}")
+    
+    def _handle_ensemble(self, args):
+        """Handle ensemble model command - Phase 3"""
+        symbol = args.symbol.upper()
+        
+        try:
+            if not config.features.enable_ensemble_models:
+                print("❌ Ensemble models are not enabled in configuration")
+                return
+            
+            from src.models.ensemble import create_ensemble_predictor
+            
+            ensemble = create_ensemble_predictor(symbol)
+            
+            if args.train:
+                print(f"\n🤖 Training ensemble models for {symbol}...")
+                metrics = ensemble.train_ensemble()
+                
+                if 'error' in metrics:
+                    print(f"❌ Training failed: {metrics['error']}")
+                else:
+                    print(f"\n✅ Ensemble training completed!")
+                    print(f"Test R²: {metrics['ensemble_test_r2']:.4f}")
+                    print(f"Test RMSE: {metrics['ensemble_test_rmse']:.4f}")
+                    print(f"Features used: {metrics['feature_count']}")
+                    
+                    print("\n📊 Individual Model Performance:")
+                    for model_name, model_metrics in metrics['individual_models'].items():
+                        print(f"   {model_name}: R² = {model_metrics['test_r2']:.4f}")
+            
+            elif args.predict:
+                print(f"\n🔮 Making ensemble prediction for {symbol}...")
+                prediction = ensemble.predict_with_ensemble(args.days)
+                
+                if 'error' in prediction:
+                    print(f"❌ Prediction failed: {prediction['error']}")
+                else:
+                    current_price = prediction['current_price']
+                    predicted_price = prediction['predicted_price']
+                    change_pct = prediction['predicted_change_pct']
+                    confidence = prediction['confidence']
+                    
+                    print(f"\n📈 Ensemble Prediction Results:")
+                    print(f"Current Price: ${current_price:.2f}")
+                    print(f"Predicted Price: ${predicted_price:.2f}")
+                    print(f"Expected Change: {change_pct:+.2f}%")
+                    print(f"Confidence: {confidence:.1%}")
+                    
+                    print(f"\n🤖 Model Contributions:")
+                    for model_name, contrib in prediction['model_contributions'].items():
+                        print(f"   {model_name}: {contrib['weighted_contribution']:+.4f} (weight: {contrib['weight']:.3f})")
+            else:
+                print("Please specify --train or --predict")
+                
+        except Exception as e:
+            print(f"❌ Error with ensemble: {e}")
+    
+    def _handle_advanced(self, args):
+        """Handle advanced analysis command - Phase 3"""
+        symbol = args.symbol.upper()
+        
+        print(f"\n🚀 Advanced AI Analysis for {symbol}...")
+        print("=" * 50)
+        
+        try:
+            # 1. Basic market data
+            stock_data = data_collector.get_stock_data(symbol)
+            current_price = stock_data.prices['Close'].iloc[-1]
+            
+            print(f"\n💰 Current Price: ${current_price:.2f}")
+            
+            # 2. Technical analysis
+            print(f"\n📊 Technical Analysis:")
+            market_data = data_collector.get_market_data(symbol)
+            if market_data.get('rsi'):
+                print(f"   RSI: {market_data['rsi']:.1f}")
+            if market_data.get('sma_20'):
+                print(f"   20-day SMA: ${market_data['sma_20']:.2f}")
+            
+            # 3. Sentiment analysis (if enabled)
+            if args.include_sentiment and config.features.enable_sentiment_analysis:
+                print(f"\n🧠 Sentiment Analysis:")
+                try:
+                    from src.analysis.sentiment import sentiment_engine
+                    sentiment_metrics = sentiment_engine.analyze_sentiment(symbol)
+                    print(f"   Overall Sentiment: {sentiment_metrics.overall_sentiment:.3f}")
+                    print(f"   Confidence: {sentiment_metrics.confidence:.1%}")
+                    print(f"   News Count: {sentiment_metrics.news_count}")
+                except Exception as e:
+                    print(f"   ⚠️ Sentiment analysis failed: {e}")
+            
+            # 4. AI Predictions
+            print(f"\n🤖 AI Predictions:")
+            
+            # LSTM Prediction
+            try:
+                predictor = create_enhanced_predictor(symbol)
+                if predictor.load_model():
+                    lstm_prediction = predictor.predict_price()
+                    print(f"   LSTM Model: {lstm_prediction['predicted_change_pct']:+.2f}% ({lstm_prediction['confidence']:.1%} confidence)")
+                else:
+                    print(f"   LSTM Model: Not trained (run 'python cli.py train {symbol}')")
+            except Exception as e:
+                print(f"   LSTM Model: Error - {e}")
+            
+            # Ensemble Prediction (if enabled)
+            if args.use_ensemble and config.features.enable_ensemble_models:
+                try:
+                    from src.models.ensemble import create_ensemble_predictor
+                    ensemble = create_ensemble_predictor(symbol)
+                    ensemble_prediction = ensemble.predict_with_ensemble()
+                    print(f"   Ensemble Model: {ensemble_prediction['predicted_change_pct']:+.2f}% ({ensemble_prediction['confidence']:.1%} confidence)")
+                except Exception as e:
+                    print(f"   Ensemble Model: Error - {e}")
+            
+            # 5. Final recommendation
+            print(f"\n🎯 AI Recommendation:")
+            try:
+                predictor = create_enhanced_predictor(symbol)
+                if predictor.load_model():
+                    prediction = predictor.predict_price()
+                    rating = predictor.get_buy_sell_rating(prediction['predicted_change_pct'] / 100)
+                    print(f"   {rating['color']} {rating['rating']}")
+                    print(f"   Reasoning: {rating['reasoning']}")
+                else:
+                    print(f"   ⚠️ No trained model available")
+            except Exception as e:
+                print(f"   ❌ Error generating recommendation: {e}")
+                
+        except Exception as e:
+            print(f"❌ Error in advanced analysis: {e}")
     
     def _handle_cleanup(self, args):
         """Handle model cleanup command"""
