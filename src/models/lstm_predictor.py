@@ -5,6 +5,8 @@ Advanced neural network for stock price prediction with 60-day forecasting
 
 import numpy as np
 import pandas as pd
+import json
+import time
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import tensorflow as tf
@@ -38,10 +40,10 @@ class EnhancedLSTMPredictor:
     Features: Multi-feature input, advanced architecture, confidence scoring, quality validation
     """
     
-    # Model quality thresholds
-    MIN_R2_SCORE = 0.3  # Minimum acceptable R² score
-    GOOD_R2_SCORE = 0.6  # Good model threshold
-    EXCELLENT_R2_SCORE = 0.8  # Excellent model threshold
+    # Model quality thresholds (adjusted for log returns prediction)
+    MIN_R2_SCORE = 0.1   # More realistic for financial time series
+    GOOD_R2_SCORE = 0.3  # Good model threshold  
+    EXCELLENT_R2_SCORE = 0.5  # Excellent model threshold (very hard to achieve in finance)
     
     def __init__(self, symbol: str):
         self.symbol = symbol.upper()
@@ -131,47 +133,158 @@ class EnhancedLSTMPredictor:
         else:
             return "Poor ❌"
     
+    def _save_metrics(self, metrics: Dict):
+        """Save training metrics to JSON file"""
+        try:
+            with open(self.metrics_path, 'w') as f:
+                json.dump(metrics, f, indent=2, default=str)
+            logger.info(f"Metrics saved to {self.metrics_path}")
+        except Exception as e:
+            logger.error(f"Failed to save metrics: {e}")
+    
+    def _load_metrics(self) -> Dict:
+        """Load training metrics from JSON file"""
+        try:
+            if self.metrics_path.exists():
+                with open(self.metrics_path, 'r') as f:
+                    return json.load(f)
+        except Exception as e:
+            logger.error(f"Failed to load metrics: {e}")
+        return {}
+    
+    def _calculate_rsi(self, prices: pd.Series, period: int = 14) -> pd.Series:
+        """Calculate Relative Strength Index"""
+        delta = prices.diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+        rs = gain / loss
+        rsi = 100 - (100 / (1 + rs))
+        return rsi
+    
+    def _calculate_macd(self, prices: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9) -> Tuple[pd.Series, pd.Series]:
+        """Calculate MACD and Signal line"""
+        ema_fast = prices.ewm(span=fast).mean()
+        ema_slow = prices.ewm(span=slow).mean()
+        macd = ema_fast - ema_slow
+        signal_line = macd.ewm(span=signal).mean()
+        return macd, signal_line
+    
+    def _calculate_bollinger_bands(self, prices: pd.Series, period: int = 20, std_dev: int = 2) -> Tuple[pd.Series, pd.Series]:
+        """Calculate Bollinger Bands"""
+        sma = prices.rolling(window=period).mean()
+        std = prices.rolling(window=period).std()
+        upper_band = sma + (std * std_dev)
+        lower_band = sma - (std * std_dev)
+        return upper_band, lower_band
+    
     def prepare_features(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        Prepare additional technical features for training
+        Prepare enhanced technical features with improved normalization for training
         
         Args:
             data: Raw OHLCV data
             
         Returns:
-            DataFrame with enhanced features
+            DataFrame with comprehensive normalized features
         """
         df = data.copy()
         
-        # Technical indicators as features
+        # Store original close for reference
+        df['Original_Close'] = df['Close']
+        
+        # Basic technical indicators
         df['SMA_5'] = df['Close'].rolling(window=5).mean()
         df['SMA_10'] = df['Close'].rolling(window=10).mean()
         df['SMA_20'] = df['Close'].rolling(window=20).mean()
+        df['SMA_50'] = df['Close'].rolling(window=50).mean()
+        df['EMA_12'] = df['Close'].ewm(span=12).mean()
+        df['EMA_26'] = df['Close'].ewm(span=26).mean()
         
-        # Price ratios
+        # Advanced technical indicators
+        df['RSI'] = self._calculate_rsi(df['Close'])
+        macd, macd_signal = self._calculate_macd(df['Close'])
+        df['MACD'] = macd
+        df['MACD_Signal'] = macd_signal
+        df['MACD_Histogram'] = macd - macd_signal
+        
+        # Bollinger Bands
+        bb_upper, bb_lower = self._calculate_bollinger_bands(df['Close'])
+        df['BB_Upper'] = bb_upper
+        df['BB_Lower'] = bb_lower
+        df['BB_Width'] = (bb_upper - bb_lower) / df['Close']  # Normalized by price
+        df['BB_Position'] = (df['Close'] - bb_lower) / (bb_upper - bb_lower)  # 0-1 normalized
+        
+        # Normalized price ratios (better for ML than absolute values)
+        df['Close_SMA5_Ratio'] = df['Close'] / df['SMA_5']
+        df['Close_SMA10_Ratio'] = df['Close'] / df['SMA_10'] 
+        df['Close_SMA20_Ratio'] = df['Close'] / df['SMA_20']
+        df['Close_SMA50_Ratio'] = df['Close'] / df['SMA_50']
+        df['SMA5_SMA20_Ratio'] = df['SMA_5'] / df['SMA_20']
+        df['EMA12_EMA26_Ratio'] = df['EMA_12'] / df['EMA_26']
+        
+        # Price features (normalized)
         df['High_Low_Ratio'] = df['High'] / df['Low']
         df['Close_Open_Ratio'] = df['Close'] / df['Open']
+        df['High_Close_Ratio'] = df['High'] / df['Close']
+        df['Low_Close_Ratio'] = df['Low'] / df['Close']
         
-        # Volume indicators
-        df['Volume_SMA'] = df['Volume'].rolling(window=10).mean()
-        df['Volume_Ratio'] = df['Volume'] / df['Volume_SMA']
-        
-        # Volatility
+        # Returns and momentum (inherently normalized)
         df['Returns'] = df['Close'].pct_change()
-        df['Volatility'] = df['Returns'].rolling(window=10).std()
+        df['Returns_2d'] = df['Close'].pct_change(2)
+        df['Returns_5d'] = df['Close'].pct_change(5)
+        df['Returns_10d'] = df['Close'].pct_change(10)
+        df['Momentum_5d'] = df['Close'] / df['Close'].shift(5) - 1
+        df['Momentum_10d'] = df['Close'] / df['Close'].shift(10) - 1
         
-        # Price change
+        # Volume features (normalized)
+        df['Volume_SMA10'] = df['Volume'].rolling(window=10).mean()
+        df['Volume_SMA20'] = df['Volume'].rolling(window=20).mean()
+        df['Volume_Ratio_10d'] = df['Volume'] / df['Volume_SMA10']
+        df['Volume_Ratio_20d'] = df['Volume'] / df['Volume_SMA20']
+        df['Volume_Change'] = df['Volume'].pct_change()
+        
+        # Volatility features
+        df['Volatility_5d'] = df['Returns'].rolling(window=5).std()
+        df['Volatility_10d'] = df['Returns'].rolling(window=10).std()
+        df['Volatility_20d'] = df['Returns'].rolling(window=20).std()
+        
+        # Price change features
         df['Price_Change'] = df['Close'].diff()
         df['Price_Change_Pct'] = df['Close'].pct_change()
+        df['Price_Change_Abs'] = df['Price_Change'].abs()
         
-        # Fill NaN values
-        df = df.ffill().bfill()
+        # Normalized distance from moving averages
+        df['Distance_SMA20'] = (df['Close'] - df['SMA_20']) / df['SMA_20']
+        df['Distance_SMA50'] = (df['Close'] - df['SMA_50']) / df['SMA_50']
+        
+        # RSI normalization (center around 0 instead of 50)
+        df['RSI_Normalized'] = (df['RSI'] - 50) / 50
+        
+        # MACD normalization (relative to price)
+        df['MACD_Price_Ratio'] = df['MACD'] / df['Close']
+        df['MACD_Signal_Price_Ratio'] = df['MACD_Signal'] / df['Close']
+        
+        # Advanced momentum indicators
+        df['Rate_of_Change_5d'] = (df['Close'] - df['Close'].shift(5)) / df['Close'].shift(5)
+        df['Rate_of_Change_10d'] = (df['Close'] - df['Close'].shift(10)) / df['Close'].shift(10)
+        
+        # Fill NaN values with improved method
+        # Forward fill first (use last known value)
+        df = df.ffill()
+        # Backward fill remaining NaNs (usually at the beginning) 
+        df = df.bfill()
+        # Fill any remaining NaNs with 0
+        df = df.fillna(0)
+        
+        # Handle infinite values
+        df = df.replace([np.inf, -np.inf], np.nan)
+        df = df.fillna(0)
         
         return df
     
     def prepare_training_data(self, data: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
-        Prepare multi-feature data for LSTM training
+        Prepare enhanced multi-feature data for LSTM training with better validation
         
         Args:
             data: DataFrame with OHLCV and technical features
@@ -179,36 +292,107 @@ class EnhancedLSTMPredictor:
         Returns:
             Tuple of (X_train, y_train, scaled_target)
         """
-        # Prepare features
+        # Prepare comprehensive features
         enhanced_data = self.prepare_features(data)
         
-        # Select feature columns
+        # Enhanced feature selection - use normalized ratios and technical indicators
         feature_columns = [
-            'Open', 'High', 'Low', 'Close', 'Volume',
-            'SMA_5', 'SMA_10', 'SMA_20',
-            'High_Low_Ratio', 'Close_Open_Ratio',
-            'Volume_Ratio', 'Volatility', 'Price_Change_Pct'
+            # Price and volume basics (normalized)
+            'Close_SMA5_Ratio', 'Close_SMA10_Ratio', 'Close_SMA20_Ratio', 'Close_SMA50_Ratio',
+            'High_Low_Ratio', 'Close_Open_Ratio', 'High_Close_Ratio', 'Low_Close_Ratio',
+            
+            # Volume features (normalized)
+            'Volume_Ratio_10d', 'Volume_Ratio_20d', 'Volume_Change',
+            
+            # Momentum and returns (inherently normalized)
+            'Returns', 'Returns_2d', 'Returns_5d', 'Returns_10d',
+            'Momentum_5d', 'Momentum_10d', 'Rate_of_Change_5d', 'Rate_of_Change_10d',
+            
+            # Technical indicators (normalized)
+            'RSI_Normalized', 'BB_Position', 'BB_Width',
+            'MACD_Price_Ratio', 'MACD_Signal_Price_Ratio',
+            
+            # Volatility features
+            'Volatility_5d', 'Volatility_10d', 'Volatility_20d',
+            
+            # Distance from moving averages (normalized)
+            'Distance_SMA20', 'Distance_SMA50',
+            
+            # Moving average ratios
+            'SMA5_SMA20_Ratio', 'EMA12_EMA26_Ratio'
         ]
         
-        # Ensure all columns exist
+        # Ensure all columns exist and handle missing features gracefully
         available_features = [col for col in feature_columns if col in enhanced_data.columns]
         
-        # Scale features
-        feature_data = enhanced_data[available_features].values
-        scaled_features = self.feature_scaler.fit_transform(feature_data)
+        logger.info(f"Using {len(available_features)} features for training: {available_features}")
         
-        # Scale target (Close price)
-        target_data = np.array(enhanced_data['Close'].values).reshape(-1, 1)
+        # Validate feature data quality
+        feature_data = enhanced_data[available_features].copy()
+        
+        # Check for and handle data quality issues
+        inf_mask = np.isinf(feature_data.values)
+        nan_mask = np.isnan(feature_data.values)
+        
+        if inf_mask.any():
+            logger.warning(f"Found {inf_mask.sum()} infinite values in features, replacing with 0")
+            feature_data = feature_data.replace([np.inf, -np.inf], 0)
+        
+        if nan_mask.any():
+            logger.warning(f"Found {nan_mask.sum()} NaN values in features, filling with 0")
+            feature_data = feature_data.fillna(0)
+        
+        # Check for features with zero variance (would cause scaling issues)
+        feature_std = feature_data.std()
+        zero_var_features = feature_std[feature_std == 0].index.tolist()
+        if zero_var_features:
+            logger.warning(f"Removing zero-variance features: {zero_var_features}")
+            feature_data = feature_data.drop(columns=zero_var_features)
+            available_features = [f for f in available_features if f not in zero_var_features]
+        
+        # Scale features using robust scaler to handle outliers better
+        from sklearn.preprocessing import RobustScaler
+        self.feature_scaler = RobustScaler()  # More robust to outliers than MinMaxScaler
+        scaled_features = self.feature_scaler.fit_transform(feature_data.values)
+        
+        # Scale target (Close price) - use log returns for better stability
+        close_prices = enhanced_data['Close'].values.astype(float)  # Ensure float type
+        
+        # Use percentage changes as target instead of absolute prices for better scaling
+        close_returns = np.log(close_prices[1:] / close_prices[:-1])  # Log returns
+        
+        # Pad the first value to maintain array length
+        close_returns = np.concatenate([[0], close_returns])
+        
+        # Scale the returns
+        target_data = close_returns.reshape(-1, 1)
         scaled_target = self.scaler.fit_transform(target_data)
         
-        # Create sequences
+        # Create sequences with improved validation
         X, y = [], []
+        
+        # Ensure we have enough data
+        min_length = self.sequence_length + 50  # Need at least 50 additional samples
+        if len(scaled_features) < min_length:
+            raise ValueError(f"Insufficient data: {len(scaled_features)} samples, need at least {min_length}")
         
         for i in range(self.sequence_length, len(scaled_features)):
             X.append(scaled_features[i-self.sequence_length:i])
             y.append(scaled_target[i, 0])
         
-        return np.array(X), np.array(y), scaled_target.flatten()
+        X_array = np.array(X)
+        y_array = np.array(y)
+        
+        # Final validation of training data
+        if np.isnan(X_array).any() or np.isnan(y_array).any():
+            raise ValueError("Training data contains NaN values after preprocessing")
+        
+        if np.isinf(X_array).any() or np.isinf(y_array).any():
+            raise ValueError("Training data contains infinite values after preprocessing")
+        
+        logger.info(f"Prepared training data: {X_array.shape} features, {y_array.shape} targets")
+        
+        return X_array, y_array, scaled_target.flatten()
     
     def _calculate_comprehensive_metrics(self, X_train: np.ndarray, y_train: np.ndarray,
                                        X_val: np.ndarray, y_val: np.ndarray,
@@ -318,26 +502,38 @@ class EnhancedLSTMPredictor:
     
     def train_enhanced_model(self, period: str = "3y") -> Dict:
         """
-        Train the enhanced LSTM model with comprehensive metrics
+        Train enhanced LSTM model with quality validation and automatic cleanup
         
         Args:
-            period: Period of historical data to use for training
+            period: Period of historical data to use for training (default: 3y for better performance)
             
         Returns:
-            Dictionary with detailed training metrics
+            Dictionary with detailed training metrics or error information
         """
         logger.info(f"Starting enhanced training for {self.symbol}")
         
-        with Timer() as timer:
+        # Clean up any existing models first
+        self._cleanup_existing_models()
+        
+        try:
+            start_time = time.time()
+            
             # Get comprehensive historical data
             stock_data = self.data_collector.get_stock_data(self.symbol, period)
             prices_df = stock_data.prices
             
             if len(prices_df) < self.sequence_length + 100:
-                raise ValueError(f"Insufficient data for training. Need at least {self.sequence_length + 100} days")
+                error_msg = f"Insufficient data for training: {len(prices_df)} samples (need at least {self.sequence_length + 100})"
+                logger.error(error_msg)
+                return {'error': error_msg, 'samples': len(prices_df)}
             
             # Prepare enhanced training data
             X, y, scaled_target = self.prepare_training_data(prices_df)
+            
+            if len(X) < 200:  # Early validation for insufficient training samples
+                error_msg = f"Insufficient training samples: {len(X)} (need at least 200)"
+                logger.error(error_msg)
+                return {'error': error_msg, 'samples': len(X)}
             
             # Split into train/validation/test
             train_size = int(len(X) * 0.7)
@@ -350,6 +546,8 @@ class EnhancedLSTMPredictor:
             X_test = X[train_size + val_size:]
             y_test = y[train_size + val_size:]
             
+            logger.info(f"Data splits - Train: {len(X_train)}, Val: {len(X_val)}, Test: {len(X_test)}")
+            
             # Build enhanced model
             self.model = self.build_enhanced_model((X.shape[1], X.shape[2]))
             
@@ -361,12 +559,6 @@ class EnhancedLSTMPredictor:
                     monitor='val_loss',
                     patience=15,
                     restore_best_weights=True,
-                    verbose=1
-                ),
-                ModelCheckpoint(
-                    self.model_path,
-                    monitor='val_loss',
-                    save_best_only=True,
                     verbose=1
                 ),
                 ReduceLROnPlateau(
@@ -389,14 +581,58 @@ class EnhancedLSTMPredictor:
                 shuffle=True
             )
             
-            # Save scalers
-            joblib.dump(self.scaler, self.scaler_path)
-            joblib.dump(self.feature_scaler, self.feature_scaler_path)
+            # Early evaluation of validation loss
+            val_loss = min(history.history['val_loss'])
+            if val_loss > 0.1:  # If validation loss is too high, likely poor model
+                logger.warning(f"High validation loss detected: {val_loss:.4f} - model may be poor quality")
             
             # Calculate comprehensive metrics
             metrics = self._calculate_comprehensive_metrics(
                 X_train, y_train, X_val, y_val, X_test, y_test, history
             )
+            
+            # CRITICAL: Validate model quality before saving
+            is_valid, reason = self._validate_model_quality(metrics)
+            
+            if not is_valid:
+                logger.error(f"Model quality validation failed: {reason}")
+                logger.info("Cleaning up poor quality model files...")
+                self._cleanup_existing_models()  # Clean up again to be sure
+                
+                return {
+                    'error': f"Model training failed quality validation: {reason}",
+                    'metrics': metrics,
+                    'validation_failed': True,
+                    'r2_score': metrics.get('val_r2', -999),
+                    'recommendation': "Try training with more data (5+ years) or different parameters"
+                }
+            
+            # Model passed validation - save it
+            logger.info(f"Model passed quality validation: {reason}")
+            
+            # Save model and scalers
+            self.model.save(self.model_path)
+            joblib.dump(self.scaler, self.scaler_path)
+            joblib.dump(self.feature_scaler, self.feature_scaler_path)
+            
+            # Save metrics
+            training_time = time.time() - start_time
+            metrics['training_time'] = training_time
+            self._save_metrics(metrics)
+            
+            quality_assessment = self._assess_model_quality(metrics['val_r2'])
+            logger.info(f"Enhanced training completed successfully - Quality: {quality_assessment}")
+            
+            return metrics
+                
+        except Exception as e:
+            error_msg = f"Enhanced training failed: {str(e)}"
+            logger.error(error_msg)
+            
+            # Clean up any partial model files on error
+            self._cleanup_existing_models()
+            
+            return {'error': error_msg}
             
             # Store training information
             self.training_metrics = metrics

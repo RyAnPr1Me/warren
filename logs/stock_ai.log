@@ -31,3 +31,29 @@
 2025-08-05 22:34:39,137 - src.data.collector - INFO - Successfully fetched data for AAPL
 2025-08-05 22:35:22,567 - absl - WARNING - Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
 2025-08-05 22:35:22,575 - src.models.lstm_predictor - INFO - Loaded enhanced model for AAPL
+2025-08-05 22:44:05,080 - src.models.lstm_predictor - INFO - Starting enhanced training for AAPL
+2025-08-05 22:44:05,082 - src.models.lstm_predictor - INFO - Removed existing model file: data/models/AAPL_enhanced_lstm.h5
+2025-08-05 22:44:05,082 - src.models.lstm_predictor - INFO - Removed existing model file: data/models/AAPL_scaler.pkl
+2025-08-05 22:44:05,084 - src.models.lstm_predictor - INFO - Removed existing model file: data/models/AAPL_feature_scaler.pkl
+2025-08-05 22:44:05,093 - src.models.lstm_predictor - INFO - Removed existing model file: data/models/AAPL_metrics.json
+2025-08-05 22:44:05,093 - src.data.collector - INFO - Fetching fresh data for AAPL
+2025-08-05 22:44:05,855 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-05 22:44:05,875 - src.models.lstm_predictor - INFO - Data splits - Train: 483, Val: 103, Test: 105
+2025-08-05 22:44:05,988 - src.models.lstm_predictor - INFO - Model architecture: 60 time steps, 13 features
+2025-08-05 22:45:05,466 - src.models.lstm_predictor - ERROR - Model quality validation failed: Validation R² (-5.678) below minimum threshold (0.3)
+2025-08-05 22:45:05,466 - src.models.lstm_predictor - INFO - Cleaning up poor quality model files...
+2025-08-05 22:45:56,183 - src.models.lstm_predictor - WARNING - No saved enhanced model found for AAPL
+2025-08-05 22:46:10,811 - src.models.lstm_predictor - INFO - Starting enhanced training for AAPL
+2025-08-05 22:46:10,811 - src.data.collector - INFO - Fetching fresh data for AAPL
+2025-08-05 22:46:11,578 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-05 22:46:11,590 - src.models.lstm_predictor - INFO - Data splits - Train: 836, Val: 179, Test: 180
+2025-08-05 22:46:11,692 - src.models.lstm_predictor - INFO - Model architecture: 60 time steps, 13 features
+2025-08-05 22:47:32,480 - src.models.lstm_predictor - ERROR - Model quality validation failed: Validation R² (-0.264) below minimum threshold (0.3)
+2025-08-05 22:47:32,480 - src.models.lstm_predictor - INFO - Cleaning up poor quality model files...
+2025-08-05 22:49:04,931 - src.models.lstm_predictor - INFO - Starting enhanced training for SO
+2025-08-05 22:49:04,931 - src.data.collector - INFO - Fetching fresh data for SO
+2025-08-05 22:49:05,902 - src.data.collector - INFO - Successfully fetched data for SO
+2025-08-05 22:49:05,918 - src.models.lstm_predictor - INFO - Data splits - Train: 836, Val: 179, Test: 180
+2025-08-05 22:49:06,028 - src.models.lstm_predictor - INFO - Model architecture: 60 time steps, 13 features
+2025-08-05 22:50:31,220 - src.models.lstm_predictor - ERROR - Model quality validation failed: Validation R² (-1.148) below minimum threshold (0.3)
+2025-08-05 22:50:31,220 - src.models.lstm_predictor - INFO - Cleaning up poor quality model files...

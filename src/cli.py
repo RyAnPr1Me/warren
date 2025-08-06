@@ -110,6 +110,11 @@ Examples:
         model_parser = subparsers.add_parser('model-info', help='Show model information and performance')
         model_parser.add_argument('symbol', help='Stock ticker symbol')
         
+        # Cleanup command
+        cleanup_parser = subparsers.add_parser('cleanup', help='Clean up model files')
+        cleanup_parser.add_argument('symbol', nargs='?', help='Stock ticker symbol (optional, cleans all if not provided)')
+        cleanup_parser.add_argument('--all', action='store_true', help='Clean up all model files')
+        
         # Config command
         config_parser = subparsers.add_parser('config', help='Show configuration')
         config_parser.add_argument('--validate', action='store_true', help='Validate configuration')
@@ -144,6 +149,8 @@ Examples:
                 self._handle_ai_recommend(parsed_args)
             elif parsed_args.command == 'model-info':
                 self._handle_model_info(parsed_args)
+            elif parsed_args.command == 'cleanup':
+                self._handle_cleanup(parsed_args)
             elif parsed_args.command == 'config':
                 self._handle_config(parsed_args)
                 
@@ -269,49 +276,68 @@ Examples:
         print("   ✅ Data download complete!")
     
     def _handle_train(self, args):
-        """Handle model training command"""
+        """Handle model training command with quality validation"""
         symbol = args.symbol.upper()
         period = args.period
         
-        print(f"\n🧠 Training LSTM model for {symbol}...")
+        print(f"\n🧠 Training Enhanced LSTM model for {symbol}...")
         print(f"📊 Using {period} of historical data")
         
         try:
             # Create predictor
             predictor = create_enhanced_predictor(symbol)
             
-            # Check if model already exists
+            # Check if model already exists (but still allow retraining since we have quality validation now)
             if predictor.model_path.exists() and not args.force:
                 print(f"⚠️  Model already exists for {symbol}")
                 print(f"   Use --force to retrain or check model performance with: python cli.py model-info {symbol}")
                 return
             
-            # Start training
+            # Start training with quality validation
             print(f"🔄 Training in progress... This may take several minutes.")
-            metrics = predictor.train_enhanced_model(period)
+            print(f"🔍 Quality validation enabled - poor models will be automatically deleted")
             
-            print(f"\n✅ Training completed!")
+            result = predictor.train_enhanced_model(period)
+            
+            # Handle validation results
+            if 'error' in result:
+                if result.get('validation_failed'):
+                    print(f"\n❌ Model Quality Validation Failed!")
+                    print(f"Reason: {result['error']}")
+                    if 'r2_score' in result:
+                        print(f"R² Score: {result['r2_score']:.3f} (minimum required: 0.3)")
+                    if 'recommendation' in result:
+                        print(f"💡 {result['recommendation']}")
+                    print(f"\n🗑️ Poor quality model automatically deleted")
+                else:
+                    print(f"\n❌ Training failed: {result['error']}")
+                return
+            
+            # Success - display comprehensive results
+            print(f"\n✅ Model training completed successfully!")
             print(f"📈 Model Performance:")
-            print(f"   Validation R² Score: {metrics['val_r2']:.4f}")
-            print(f"   Validation RMSE: ${metrics['val_rmse']:.2f}")
-            print(f"   Validation MAE: ${metrics['val_mae']:.2f}")
-            print(f"   Training Time: {metrics.get('training_time_seconds', 0):.1f}s")
-            print(f"   Epochs Trained: {metrics['epochs_trained']}")
-            print(f"   Total Parameters: {metrics['total_parameters']:,}")
+            print(f"   Validation R² Score: {result.get('val_r2', 0):.4f}")
+            print(f"   Test R² Score: {result.get('test_r2', 0):.4f}")
+            print(f"   Validation RMSE: ${result.get('val_rmse', 0):.2f}")
+            print(f"   Validation MAE: ${result.get('val_mae', 0):.2f}")
+            print(f"   Training Time: {result.get('training_time', 0):.1f}s")
+            print(f"   Epochs Trained: {result.get('epochs_trained', 0)}")
+            print(f"   Total Parameters: {result.get('total_parameters', 0):,}")
             
-            # Model quality assessment
-            r2_score = metrics['val_r2']
+            # Enhanced model quality assessment
+            r2_score = result.get('val_r2', 0)
             if r2_score >= 0.8:
                 quality = "Excellent 🎯"
             elif r2_score >= 0.6:
                 quality = "Good 👍"
-            elif r2_score >= 0.4:
+            elif r2_score >= 0.3:  # Updated threshold to match validation
                 quality = "Fair 👌"
             else:
-                quality = "Needs Improvement 📈"
+                quality = "Poor ❌ (should not reach here due to validation)"
             
             print(f"\n🎯 Model Quality: {quality}")
             print(f"📋 Model saved to: {predictor.model_path}")
+            print(f"\n✨ Model is ready for predictions and AI recommendations!")
             
         except Exception as e:
             logger.error(f"Training failed for {symbol}: {str(e)}")
@@ -522,6 +548,36 @@ Examples:
             return f"${market_cap/1e6:.1f}M"
         else:
             return f"${market_cap:,.0f}"
+    
+    def _handle_cleanup(self, args):
+        """Handle model cleanup command"""
+        try:
+            if args.all or not args.symbol:
+                # Clean up all models
+                import glob
+                from pathlib import Path
+                
+                models_dir = Path("data/models")
+                if models_dir.exists():
+                    model_files = list(models_dir.glob("*"))
+                    if model_files:
+                        for file_path in model_files:
+                            file_path.unlink()
+                        print(f"✅ Cleaned up {len(model_files)} model files")
+                    else:
+                        print("ℹ️ No model files found to clean up")
+                else:
+                    print("ℹ️ No models directory found")
+            else:
+                # Clean up specific symbol
+                symbol = args.symbol.upper()
+                predictor = create_enhanced_predictor(symbol)
+                predictor._cleanup_existing_models()
+                print(f"✅ Cleaned up model files for {symbol}")
+                    
+        except Exception as e:
+            logger.error(f"Cleanup failed: {str(e)}")
+            print(f"❌ Cleanup failed: {str(e)}")
 
 
 def main():
