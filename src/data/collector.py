@@ -15,6 +15,7 @@ import time
 from dataclasses import dataclass
 
 from ..config import config
+from .validator import StockDataValidator, DataPipeline
 
 logger = logging.getLogger(__name__)
 
@@ -42,14 +43,17 @@ class StockDataCollector:
     def __init__(self):
         self.cache = {}
         self.cache_expiry = config.cache.expiry_minutes
+        self.validator = StockDataValidator(min_data_points=500)
+        self.pipeline = DataPipeline(self.validator)
         
-    def get_stock_data(self, symbol: str, period: str = "2y") -> StockData:
+    def get_stock_data(self, symbol: str, period: str = "2y", validate: bool = True) -> StockData:
         """
         Get comprehensive stock data for a given symbol
         
         Args:
             symbol: Stock ticker symbol (e.g., 'AAPL', 'GOOGL')
             period: Time period for historical data ('1y', '2y', '5y', 'max')
+            validate: Whether to run data validation pipeline
             
         Returns:
             StockData object containing price history and company info
@@ -71,6 +75,24 @@ class StockDataCollector:
             hist_data = ticker.history(period=period)
             if hist_data.empty:
                 raise ValueError(f"No data found for symbol {symbol}")
+            
+            # Data validation and cleaning pipeline
+            if validate:
+                logger.info(f"Running data validation pipeline for {symbol}")
+                try:
+                    clean_data, pipeline_report = self.pipeline.prepare_training_data(hist_data, symbol)
+                    
+                    # Log validation results
+                    if pipeline_report['warnings']:
+                        logger.warning(f"Data warnings for {symbol}: {'; '.join(pipeline_report['warnings'][:3])}")
+                    
+                    logger.info(f"Data pipeline: {pipeline_report['input_rows']} -> {pipeline_report['final_rows']} rows")
+                    hist_data = clean_data
+                    
+                except Exception as validation_error:
+                    logger.error(f"Data validation failed for {symbol}: {validation_error}")
+                    logger.warning(f"Proceeding with raw data for {symbol}")
+                    # Continue with raw data if validation fails
             
             # Get company information
             info = ticker.info

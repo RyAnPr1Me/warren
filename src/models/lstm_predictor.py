@@ -169,116 +169,246 @@ class EnhancedLSTMPredictor:
         signal_line = macd.ewm(span=signal).mean()
         return macd, signal_line
     
-    def _calculate_bollinger_bands(self, prices: pd.Series, period: int = 20, std_dev: int = 2) -> Tuple[pd.Series, pd.Series]:
+    def _calculate_bollinger_bands(self, close_prices, window=20, num_std=2):
         """Calculate Bollinger Bands"""
-        sma = prices.rolling(window=period).mean()
-        std = prices.rolling(window=period).std()
-        upper_band = sma + (std * std_dev)
-        lower_band = sma - (std * std_dev)
+        sma = close_prices.rolling(window=window).mean()
+        std = close_prices.rolling(window=window).std()
+        upper_band = sma + (std * num_std)
+        lower_band = sma - (std * num_std)
         return upper_band, lower_band
+    
+    def _calculate_williams_r(self, high, low, close, period=14):
+        """Calculate Williams %R"""
+        highest_high = high.rolling(window=period).max()
+        lowest_low = low.rolling(window=period).min()
+        williams_r = ((highest_high - close) / (highest_high - lowest_low)) * -100
+        return williams_r
+    
+    def _calculate_stochastic(self, high, low, close, k_period=14, d_period=3):
+        """Calculate Stochastic Oscillator"""
+        lowest_low = low.rolling(window=k_period).min()
+        highest_high = high.rolling(window=k_period).max()
+        k_percent = 100 * ((close - lowest_low) / (highest_high - lowest_low))
+        d_percent = k_percent.rolling(window=d_period).mean()
+        return k_percent, d_percent
+    
+    def _calculate_hurst(self, prices):
+        """Calculate Hurst Exponent for trend persistence"""
+        try:
+            if len(prices) < 10:
+                return 0.5  # Random walk default
+            
+            prices = np.array(prices)
+            lags = range(2, min(10, len(prices)//2))
+            
+            # Calculate variance of lagged differences
+            tau = [np.sqrt(np.std(np.subtract(prices[lag:], prices[:-lag]))) for lag in lags]
+            
+            # Linear regression of log(tau) vs log(lag)
+            poly = np.polyfit(np.log(lags), np.log(tau), 1)
+            hurst = poly[0] * 2.0
+            
+            return max(0, min(1, hurst))  # Clamp between 0 and 1
+        except:
+            return 0.5
+    
+    def _calculate_fractal_dimension(self, prices):
+        """Calculate Fractal Dimension"""
+        try:
+            if len(prices) < 10:
+                return 1.5
+            
+            prices = np.array(prices)
+            n = len(prices)
+            
+            # Calculate relative range
+            mean_price = np.mean(prices)
+            deviations = prices - mean_price
+            cumsum_dev = np.cumsum(deviations)
+            
+            # Range calculation
+            max_cumsum = np.max(cumsum_dev)
+            min_cumsum = np.min(cumsum_dev)
+            range_rs = max_cumsum - min_cumsum
+            
+            # Standard deviation
+            std_dev = np.std(prices)
+            
+            if std_dev == 0:
+                return 1.5
+            
+            # Hurst exponent approximation
+            rs_ratio = range_rs / std_dev
+            fractal_dim = 2 - (np.log(rs_ratio) / np.log(n))
+            
+            return max(1, min(2, fractal_dim))  # Clamp between 1 and 2
+        except:
+            return 1.5
+    
+    def _calculate_efficiency_ratio(self, close_prices, period=10):
+        """Calculate Kaufman's Efficiency Ratio"""
+        try:
+            # Direction (net change)
+            direction = abs(close_prices.diff(period))
+            
+            # Volatility (sum of absolute changes)
+            volatility = close_prices.diff().abs().rolling(window=period).sum()
+            
+            # Efficiency Ratio
+            efficiency = direction / volatility
+            efficiency = efficiency.fillna(0)
+            
+            return efficiency
+        except:
+            return pd.Series(0, index=close_prices.index)
     
     def prepare_features(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        Prepare enhanced technical features with improved normalization for training
+        Prepare advanced financial features using proven quant finance techniques
         
         Args:
             data: Raw OHLCV data
             
         Returns:
-            DataFrame with comprehensive normalized features
+            DataFrame with sophisticated financial features
         """
         df = data.copy()
         
-        # Store original close for reference
-        df['Original_Close'] = df['Close']
+        # Ensure we have enough data for feature calculation
+        if len(df) < 100:
+            logger.warning(f"Limited data points ({len(df)}), features may be less reliable")
         
-        # Basic technical indicators
+        # === PRICE FEATURES ===
+        # Multi-timeframe moving averages
         df['SMA_5'] = df['Close'].rolling(window=5).mean()
         df['SMA_10'] = df['Close'].rolling(window=10).mean()
         df['SMA_20'] = df['Close'].rolling(window=20).mean()
         df['SMA_50'] = df['Close'].rolling(window=50).mean()
         df['EMA_12'] = df['Close'].ewm(span=12).mean()
         df['EMA_26'] = df['Close'].ewm(span=26).mean()
+        df['EMA_50'] = df['Close'].ewm(span=50).mean()
         
-        # Advanced technical indicators
+        # Price position features (normalized 0-1)
+        df['Price_SMA5_Ratio'] = df['Close'] / df['SMA_5']
+        df['Price_SMA20_Ratio'] = df['Close'] / df['SMA_20']
+        df['Price_SMA50_Ratio'] = df['Close'] / df['SMA_50']
+        df['SMA5_SMA20_Ratio'] = df['SMA_5'] / df['SMA_20']
+        df['EMA12_EMA26_Ratio'] = df['EMA_12'] / df['EMA_26']
+        
+        # === MOMENTUM FEATURES ===
+        # Multi-period returns (log returns for better properties)
+        df['Log_Return_1d'] = np.log(df['Close'] / df['Close'].shift(1))
+        df['Log_Return_5d'] = np.log(df['Close'] / df['Close'].shift(5))
+        df['Log_Return_10d'] = np.log(df['Close'] / df['Close'].shift(10))
+        df['Log_Return_20d'] = np.log(df['Close'] / df['Close'].shift(20))
+        
+        # Rate of Change (ROC) - momentum indicator
+        df['ROC_5'] = (df['Close'] - df['Close'].shift(5)) / df['Close'].shift(5)
+        df['ROC_10'] = (df['Close'] - df['Close'].shift(10)) / df['Close'].shift(10)
+        df['ROC_20'] = (df['Close'] - df['Close'].shift(20)) / df['Close'].shift(20)
+        
+        # === VOLATILITY FEATURES ===
+        # Realized volatility (annualized)
+        df['Volatility_5d'] = df['Log_Return_1d'].rolling(window=5).std() * np.sqrt(252)
+        df['Volatility_10d'] = df['Log_Return_1d'].rolling(window=10).std() * np.sqrt(252)
+        df['Volatility_20d'] = df['Log_Return_1d'].rolling(window=20).std() * np.sqrt(252)
+        
+        # Volatility of volatility (vol clustering)
+        df['Vol_of_Vol'] = df['Volatility_20d'].rolling(window=10).std()
+        
+        # Garman-Klass volatility estimator (uses OHLC)
+        df['GK_Volatility'] = np.sqrt(
+            np.log(df['High'] / df['Close']) * np.log(df['High'] / df['Open']) +
+            np.log(df['Low'] / df['Close']) * np.log(df['Low'] / df['Open'])
+        )
+        
+        # === VOLUME FEATURES ===
+        # Volume moving averages
+        df['Volume_SMA10'] = df['Volume'].rolling(window=10).mean()
+        df['Volume_SMA20'] = df['Volume'].rolling(window=20).mean()
+        
+        # Volume ratios and momentum
+        df['Volume_Ratio'] = df['Volume'] / df['Volume_SMA20']
+        df['Volume_ROC'] = df['Volume'].pct_change(5)
+        
+        # Price-Volume relationship (money flow)
+        df['Money_Flow'] = df['Close'] * df['Volume']
+        df['Money_Flow_Ratio'] = df['Money_Flow'] / df['Money_Flow'].rolling(window=20).mean()
+        
+        # On-Balance Volume (OBV)
+        df['OBV'] = (np.sign(df['Close'].diff()) * df['Volume']).cumsum()
+        df['OBV_MA'] = df['OBV'].rolling(window=20).mean()
+        df['OBV_Signal'] = df['OBV'] / df['OBV_MA']
+        
+        # === TECHNICAL INDICATORS ===
+        # RSI with smoothing
         df['RSI'] = self._calculate_rsi(df['Close'])
+        df['RSI_Smooth'] = df['RSI'].ewm(span=3).mean()
+        df['RSI_Normalized'] = (df['RSI'] - 50) / 50
+        
+        # MACD with histogram
         macd, macd_signal = self._calculate_macd(df['Close'])
         df['MACD'] = macd
         df['MACD_Signal'] = macd_signal
         df['MACD_Histogram'] = macd - macd_signal
+        df['MACD_Normalized'] = df['MACD'] / df['Close']
         
-        # Bollinger Bands
+        # Bollinger Bands with additional features
         bb_upper, bb_lower = self._calculate_bollinger_bands(df['Close'])
         df['BB_Upper'] = bb_upper
         df['BB_Lower'] = bb_lower
-        df['BB_Width'] = (bb_upper - bb_lower) / df['Close']  # Normalized by price
-        df['BB_Position'] = (df['Close'] - bb_lower) / (bb_upper - bb_lower)  # 0-1 normalized
+        df['BB_Width'] = (bb_upper - bb_lower) / df['Close']
+        df['BB_Position'] = (df['Close'] - bb_lower) / (bb_upper - bb_lower)
+        df['BB_Squeeze'] = df['BB_Width'].rolling(window=20).min() == df['BB_Width']
         
-        # Normalized price ratios (better for ML than absolute values)
-        df['Close_SMA5_Ratio'] = df['Close'] / df['SMA_5']
-        df['Close_SMA10_Ratio'] = df['Close'] / df['SMA_10'] 
-        df['Close_SMA20_Ratio'] = df['Close'] / df['SMA_20']
-        df['Close_SMA50_Ratio'] = df['Close'] / df['SMA_50']
-        df['SMA5_SMA20_Ratio'] = df['SMA_5'] / df['SMA_20']
-        df['EMA12_EMA26_Ratio'] = df['EMA_12'] / df['EMA_26']
+        # Williams %R
+        df['Williams_R'] = self._calculate_williams_r(df['High'], df['Low'], df['Close'])
         
-        # Price features (normalized)
+        # Stochastic Oscillator
+        df['Stoch_K'], df['Stoch_D'] = self._calculate_stochastic(df['High'], df['Low'], df['Close'])
+        
+        # === ADVANCED FEATURES ===
+        # Hurst Exponent (trend persistence)
+        df['Hurst_10d'] = df['Close'].rolling(window=20).apply(self._calculate_hurst, raw=False)
+        
+        # Fractal dimension
+        df['Fractal_Dim'] = df['Close'].rolling(window=20).apply(self._calculate_fractal_dimension, raw=False)
+        
+        # Efficiency Ratio (Kaufman)
+        df['Efficiency_Ratio'] = self._calculate_efficiency_ratio(df['Close'])
+        
+        # Z-Score (mean reversion signal)
+        df['Z_Score_20'] = (df['Close'] - df['SMA_20']) / df['Volatility_20d']
+        df['Z_Score_50'] = (df['Close'] - df['SMA_50']) / df['Volatility_20d']
+        
+        # === INTRADAY FEATURES ===
         df['High_Low_Ratio'] = df['High'] / df['Low']
         df['Close_Open_Ratio'] = df['Close'] / df['Open']
-        df['High_Close_Ratio'] = df['High'] / df['Close']
-        df['Low_Close_Ratio'] = df['Low'] / df['Close']
+        df['Body_Size'] = abs(df['Close'] - df['Open']) / df['Open']
+        df['Upper_Shadow'] = (df['High'] - np.maximum(df['Open'], df['Close'])) / df['Open']
+        df['Lower_Shadow'] = (np.minimum(df['Open'], df['Close']) - df['Low']) / df['Open']
         
-        # Returns and momentum (inherently normalized)
-        df['Returns'] = df['Close'].pct_change()
-        df['Returns_2d'] = df['Close'].pct_change(2)
-        df['Returns_5d'] = df['Close'].pct_change(5)
-        df['Returns_10d'] = df['Close'].pct_change(10)
-        df['Momentum_5d'] = df['Close'] / df['Close'].shift(5) - 1
-        df['Momentum_10d'] = df['Close'] / df['Close'].shift(10) - 1
+        # === REGIME FEATURES ===
+        # Trend strength
+        df['Trend_Strength'] = abs(df['SMA_5'] - df['SMA_20']) / df['SMA_20']
         
-        # Volume features (normalized)
-        df['Volume_SMA10'] = df['Volume'].rolling(window=10).mean()
-        df['Volume_SMA20'] = df['Volume'].rolling(window=20).mean()
-        df['Volume_Ratio_10d'] = df['Volume'] / df['Volume_SMA10']
-        df['Volume_Ratio_20d'] = df['Volume'] / df['Volume_SMA20']
-        df['Volume_Change'] = df['Volume'].pct_change()
+        # Market regime (bull/bear/sideways)
+        df['Market_Regime'] = np.where(
+            df['SMA_5'] > df['SMA_20'], 1,  # Bull
+            np.where(df['SMA_5'] < df['SMA_20'], -1, 0)  # Bear or Sideways
+        )
         
-        # Volatility features
-        df['Volatility_5d'] = df['Returns'].rolling(window=5).std()
-        df['Volatility_10d'] = df['Returns'].rolling(window=10).std()
-        df['Volatility_20d'] = df['Returns'].rolling(window=20).std()
-        
-        # Price change features
-        df['Price_Change'] = df['Close'].diff()
-        df['Price_Change_Pct'] = df['Close'].pct_change()
-        df['Price_Change_Abs'] = df['Price_Change'].abs()
-        
-        # Normalized distance from moving averages
-        df['Distance_SMA20'] = (df['Close'] - df['SMA_20']) / df['SMA_20']
-        df['Distance_SMA50'] = (df['Close'] - df['SMA_50']) / df['SMA_50']
-        
-        # RSI normalization (center around 0 instead of 50)
-        df['RSI_Normalized'] = (df['RSI'] - 50) / 50
-        
-        # MACD normalization (relative to price)
-        df['MACD_Price_Ratio'] = df['MACD'] / df['Close']
-        df['MACD_Signal_Price_Ratio'] = df['MACD_Signal'] / df['Close']
-        
-        # Advanced momentum indicators
-        df['Rate_of_Change_5d'] = (df['Close'] - df['Close'].shift(5)) / df['Close'].shift(5)
-        df['Rate_of_Change_10d'] = (df['Close'] - df['Close'].shift(10)) / df['Close'].shift(10)
-        
-        # Fill NaN values with improved method
-        # Forward fill first (use last known value)
-        df = df.ffill()
-        # Backward fill remaining NaNs (usually at the beginning) 
-        df = df.bfill()
-        # Fill any remaining NaNs with 0
-        df = df.fillna(0)
-        
-        # Handle infinite values
+        # === DATA CLEANING ===
+        # Handle infinite and NaN values
         df = df.replace([np.inf, -np.inf], np.nan)
+        
+        # Forward fill then backward fill
+        df = df.ffill().bfill()
+        
+        # Fill any remaining NaN with 0
         df = df.fillna(0)
+        
+        logger.info(f"Generated {len(df.columns)} advanced features from {len(data)} data points")
         
         return df
     
@@ -295,31 +425,25 @@ class EnhancedLSTMPredictor:
         # Prepare comprehensive features
         enhanced_data = self.prepare_features(data)
         
-        # Enhanced feature selection - use normalized ratios and technical indicators
+        # Advanced feature selection - reduced to most basic predictive features
         feature_columns = [
-            # Price and volume basics (normalized)
-            'Close_SMA5_Ratio', 'Close_SMA10_Ratio', 'Close_SMA20_Ratio', 'Close_SMA50_Ratio',
-            'High_Low_Ratio', 'Close_Open_Ratio', 'High_Close_Ratio', 'Low_Close_Ratio',
+            # Basic price momentum (most predictive)
+            'Price_SMA5_Ratio', 'Price_SMA20_Ratio',
             
-            # Volume features (normalized)
-            'Volume_Ratio_10d', 'Volume_Ratio_20d', 'Volume_Change',
+            # Returns (core predictive signal)
+            'Log_Return_1d', 'Log_Return_5d',
             
-            # Momentum and returns (inherently normalized)
-            'Returns', 'Returns_2d', 'Returns_5d', 'Returns_10d',
-            'Momentum_5d', 'Momentum_10d', 'Rate_of_Change_5d', 'Rate_of_Change_10d',
+            # Basic volatility (risk measure)
+            'Volatility_10d',
             
-            # Technical indicators (normalized)
-            'RSI_Normalized', 'BB_Position', 'BB_Width',
-            'MACD_Price_Ratio', 'MACD_Signal_Price_Ratio',
+            # Volume (market participation)
+            'Volume_Ratio',
             
-            # Volatility features
-            'Volatility_5d', 'Volatility_10d', 'Volatility_20d',
+            # Essential momentum indicator
+            'RSI_Normalized',
             
-            # Distance from moving averages (normalized)
-            'Distance_SMA20', 'Distance_SMA50',
-            
-            # Moving average ratios
-            'SMA5_SMA20_Ratio', 'EMA12_EMA26_Ratio'
+            # Trend following
+            'MACD_Normalized'
         ]
         
         # Ensure all columns exist and handle missing features gracefully
@@ -709,12 +833,25 @@ class EnhancedLSTMPredictor:
         # Prepare features for the recent data
         enhanced_recent = self.prepare_features(recent_data)
         
-        # Get feature columns (same as training)
+        # Get feature columns (same reduced set as training for consistency)
         feature_columns = [
-            'Open', 'High', 'Low', 'Close', 'Volume',
-            'SMA_5', 'SMA_10', 'SMA_20',
-            'High_Low_Ratio', 'Close_Open_Ratio',
-            'Volume_Ratio', 'Volatility', 'Price_Change_Pct'
+            # Basic price momentum (most predictive)
+            'Price_SMA5_Ratio', 'Price_SMA20_Ratio',
+            
+            # Returns (core predictive signal)
+            'Log_Return_1d', 'Log_Return_5d',
+            
+            # Basic volatility (risk measure)
+            'Volatility_10d',
+            
+            # Volume (market participation)
+            'Volume_Ratio',
+            
+            # Essential momentum indicator
+            'RSI_Normalized',
+            
+            # Trend following
+            'MACD_Normalized'
         ]
         
         available_features = [col for col in feature_columns if col in enhanced_recent.columns]

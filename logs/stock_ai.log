@@ -57,3 +57,61 @@
 2025-08-05 22:49:06,028 - src.models.lstm_predictor - INFO - Model architecture: 60 time steps, 13 features
 2025-08-05 22:50:31,220 - src.models.lstm_predictor - ERROR - Model quality validation failed: Validation R² (-1.148) below minimum threshold (0.3)
 2025-08-05 22:50:31,220 - src.models.lstm_predictor - INFO - Cleaning up poor quality model files...
+2025-08-05 22:53:45,929 - src.models.lstm_predictor - INFO - Starting enhanced training for AAPL
+2025-08-05 22:53:45,930 - src.data.collector - INFO - Fetching fresh data for AAPL
+2025-08-05 22:53:46,777 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-05 22:53:46,811 - src.models.lstm_predictor - INFO - Using 31 features for training: ['Close_SMA5_Ratio', 'Close_SMA10_Ratio', 'Close_SMA20_Ratio', 'Close_SMA50_Ratio', 'High_Low_Ratio', 'Close_Open_Ratio', 'High_Close_Ratio', 'Low_Close_Ratio', 'Volume_Ratio_10d', 'Volume_Ratio_20d', 'Volume_Change', 'Returns', 'Returns_2d', 'Returns_5d', 'Returns_10d', 'Momentum_5d', 'Momentum_10d', 'Rate_of_Change_5d', 'Rate_of_Change_10d', 'RSI_Normalized', 'BB_Position', 'BB_Width', 'MACD_Price_Ratio', 'MACD_Signal_Price_Ratio', 'Volatility_5d', 'Volatility_10d', 'Volatility_20d', 'Distance_SMA20', 'Distance_SMA50', 'SMA5_SMA20_Ratio', 'EMA12_EMA26_Ratio']
+2025-08-05 22:53:46,827 - src.models.lstm_predictor - INFO - Prepared training data: (1195, 60, 31) features, (1195,) targets
+2025-08-05 22:53:46,828 - src.models.lstm_predictor - INFO - Data splits - Train: 836, Val: 179, Test: 180
+2025-08-05 22:53:46,923 - src.models.lstm_predictor - INFO - Model architecture: 60 time steps, 31 features
+2025-08-05 22:55:23,226 - src.models.lstm_predictor - ERROR - Model quality validation failed: Validation R² (-0.009) below minimum threshold (0.1)
+2025-08-05 22:55:23,227 - src.models.lstm_predictor - INFO - Cleaning up poor quality model files...
+2025-08-05 23:01:24,143 - src.models.lstm_predictor - INFO - Starting enhanced training for AAPL
+2025-08-05 23:01:24,143 - src.data.collector - INFO - Fetching fresh data for AAPL
+2025-08-05 23:01:24,950 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-05 23:01:24,986 - src.models.lstm_predictor - INFO - Using 13 features for training: ['Close_SMA5_Ratio', 'Close_SMA10_Ratio', 'Close_SMA20_Ratio', 'High_Low_Ratio', 'Close_Open_Ratio', 'Volume_Ratio_10d', 'Returns', 'Returns_2d', 'Returns_5d', 'RSI_Normalized', 'BB_Position', 'Volatility_5d', 'Volatility_10d']
+2025-08-05 23:01:24,993 - src.models.lstm_predictor - INFO - Prepared training data: (1225, 30, 13) features, (1225,) targets
+2025-08-05 23:01:24,993 - src.models.lstm_predictor - INFO - Data splits - Train: 857, Val: 183, Test: 185
+2025-08-05 23:01:25,094 - src.models.lstm_predictor - INFO - Model architecture: 30 time steps, 13 features
+2025-08-05 23:02:20,554 - src.models.lstm_predictor - ERROR - Model quality validation failed: Validation R² (-0.010) below minimum threshold (0.1)
+2025-08-05 23:02:20,555 - src.models.lstm_predictor - INFO - Cleaning up poor quality model files...
+2025-08-05 23:04:19,804 - src.models.lstm_predictor - INFO - Starting enhanced training for AAPL
+2025-08-05 23:04:19,804 - src.data.collector - INFO - Fetching fresh data for AAPL
+2025-08-05 23:04:20,611 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-05 23:04:20,643 - src.models.lstm_predictor - INFO - Using 6 features for training: ['Close_SMA5_Ratio', 'Close_SMA10_Ratio', 'High_Low_Ratio', 'Volume_Ratio_10d', 'Returns', 'Volatility_5d']
+2025-08-05 23:04:20,647 - src.models.lstm_predictor - INFO - Prepared training data: (1235, 20, 6) features, (1235,) targets
+2025-08-05 23:04:20,647 - src.models.lstm_predictor - INFO - Data splits - Train: 864, Val: 185, Test: 186
+2025-08-05 23:04:20,747 - src.models.lstm_predictor - INFO - Model architecture: 20 time steps, 6 features
+2025-08-05 23:05:07,082 - src.models.lstm_predictor - ERROR - Model quality validation failed: Validation R² (-0.008) below minimum threshold (0.1)
+2025-08-05 23:05:07,083 - src.models.lstm_predictor - INFO - Cleaning up poor quality model files...
+2025-08-05 23:08:57,132 - src.models.lstm_predictor - INFO - Starting enhanced training for AAPL
+2025-08-05 23:08:57,133 - src.data.collector - INFO - Fetching fresh data for AAPL
+2025-08-05 23:08:57,994 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-05 23:08:58,231 - src.models.lstm_predictor - INFO - Generated 67 advanced features from 1255 data points
+2025-08-05 23:08:58,232 - src.models.lstm_predictor - INFO - Using 41 features for training: ['Price_SMA5_Ratio', 'Price_SMA20_Ratio', 'Price_SMA50_Ratio', 'SMA5_SMA20_Ratio', 'EMA12_EMA26_Ratio', 'Log_Return_1d', 'Log_Return_5d', 'Log_Return_10d', 'ROC_5', 'ROC_10', 'ROC_20', 'Volatility_5d', 'Volatility_10d', 'Volatility_20d', 'Vol_of_Vol', 'GK_Volatility', 'Volume_Ratio', 'Volume_ROC', 'Money_Flow_Ratio', 'OBV_Signal', 'RSI_Normalized', 'RSI_Smooth', 'MACD_Normalized', 'MACD_Histogram', 'BB_Position', 'BB_Width', 'Williams_R', 'Stoch_K', 'Stoch_D', 'Hurst_10d', 'Fractal_Dim', 'Efficiency_Ratio', 'Z_Score_20', 'Z_Score_50', 'High_Low_Ratio', 'Close_Open_Ratio', 'Body_Size', 'Upper_Shadow', 'Lower_Shadow', 'Trend_Strength', 'Market_Regime']
+2025-08-05 23:08:58,242 - src.models.lstm_predictor - INFO - Prepared training data: (1215, 40, 41) features, (1215,) targets
+2025-08-05 23:08:58,242 - src.models.lstm_predictor - INFO - Data splits - Train: 850, Val: 182, Test: 183
+2025-08-05 23:08:58,344 - src.models.lstm_predictor - INFO - Model architecture: 40 time steps, 41 features
+2025-08-05 23:10:34,092 - src.models.lstm_predictor - ERROR - Model quality validation failed: Validation R² (-0.022) below minimum threshold (0.1)
+2025-08-05 23:10:34,093 - src.models.lstm_predictor - INFO - Cleaning up poor quality model files...
+2025-08-05 23:22:09,095 - src.models.lstm_predictor - INFO - Starting enhanced training for AAPL
+2025-08-05 23:22:09,096 - src.data.collector - INFO - Fetching fresh data for AAPL
+2025-08-05 23:22:09,996 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-05 23:22:10,256 - src.models.lstm_predictor - INFO - Generated 67 advanced features from 1255 data points
+2025-08-05 23:22:10,256 - src.models.lstm_predictor - INFO - Using 17 features for training: ['Price_SMA5_Ratio', 'Price_SMA20_Ratio', 'Price_SMA50_Ratio', 'SMA5_SMA20_Ratio', 'EMA12_EMA26_Ratio', 'Log_Return_1d', 'Log_Return_5d', 'Log_Return_10d', 'Volatility_10d', 'Volatility_20d', 'Vol_of_Vol', 'Volume_Ratio', 'OBV_Signal', 'RSI_Normalized', 'MACD_Normalized', 'BB_Position', 'Trend_Strength']
+2025-08-05 23:22:10,261 - src.models.lstm_predictor - INFO - Prepared training data: (1235, 20, 17) features, (1235,) targets
+2025-08-05 23:22:10,261 - src.models.lstm_predictor - INFO - Data splits - Train: 864, Val: 185, Test: 186
+2025-08-05 23:22:10,343 - src.models.lstm_predictor - INFO - Model architecture: 20 time steps, 17 features
+2025-08-05 23:22:58,031 - src.models.lstm_predictor - ERROR - Model quality validation failed: Validation R² (-0.011) below minimum threshold (0.1)
+2025-08-05 23:22:58,033 - src.models.lstm_predictor - INFO - Cleaning up poor quality model files...
+2025-08-05 23:25:56,258 - __main__ - ERROR - Training failed for AAPL: 'ModelConfig' object has no attribute 'data_path'
+2025-08-05 23:40:02,924 - src.models.lstm_predictor - INFO - Starting enhanced training for AAPL
+2025-08-05 23:40:02,924 - src.data.collector - INFO - Fetching fresh data for AAPL
+2025-08-05 23:40:04,709 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-05 23:40:04,960 - src.models.lstm_predictor - INFO - Generated 67 advanced features from 1255 data points
+2025-08-05 23:40:04,961 - src.models.lstm_predictor - INFO - Using 8 features for training: ['Price_SMA5_Ratio', 'Price_SMA20_Ratio', 'Log_Return_1d', 'Log_Return_5d', 'Volatility_10d', 'Volume_Ratio', 'RSI_Normalized', 'MACD_Normalized']
+2025-08-05 23:40:04,968 - src.models.lstm_predictor - INFO - Prepared training data: (1240, 15, 8) features, (1240,) targets
+2025-08-05 23:40:04,968 - src.models.lstm_predictor - INFO - Data splits - Train: 868, Val: 186, Test: 186
+2025-08-05 23:40:05,107 - src.models.lstm_predictor - INFO - Model architecture: 15 time steps, 8 features
+2025-08-05 23:40:32,383 - src.models.lstm_predictor - ERROR - Model quality validation failed: Validation R² (0.014) below minimum threshold (0.1)
+2025-08-05 23:40:32,384 - src.models.lstm_predictor - INFO - Cleaning up poor quality model files...

@@ -33,18 +33,38 @@ class DatabaseConfig:
 
 @dataclass
 class ModelConfig:
-    """Machine learning model configuration"""
-    data_path: Path = Path("data/models/")
-    sequence_length: int = 60  # Days of historical data for LSTM
-    prediction_days: int = 60  # Days to predict forward
-    batch_size: int = 32
-    epochs: int = 100
-    learning_rate: float = 0.001
-    validation_split: float = 0.2
+    """Configuration for LSTM model training and prediction"""
+    
+    # Data settings
+    model_data_path: str = "data"      # Base path for model data storage
+    
+    # Model architecture
+    sequence_length: int = 15          # Reduced for better generalization 
+    lstm_units: int = 128              # Hidden units in LSTM layers
+    dropout_rate: float = 0.3          # Dropout for regularization
+    
+    # Training parameters
+    batch_size: int = 32               # Batch size for training
+    epochs: int = 100                  # Maximum epochs
+    learning_rate: float = 0.001       # Initial learning rate
+    patience: int = 15                 # Early stopping patience
+    validation_split: float = 0.15     # Validation data split
+    test_split: float = 0.15           # Test data split
+    
+    # Quality thresholds
+    min_r2_score: float = 0.1          # Minimum R² for model acceptance
+    
+    # Prediction settings
+    prediction_days: int = 5           # Default days to predict ahead
+    confidence_level: float = 0.95     # Confidence level for intervals
+    
+    # Data storage
+    data_path: Path = Path("data/models")  # Path for model storage
     
     def __post_init__(self):
-        self.data_path = Path(os.getenv('MODEL_DATA_PATH', str(self.data_path)))
-        self.data_path.mkdir(parents=True, exist_ok=True)
+        # Allow override from environment
+        if model_data_path := os.getenv('MODEL_DATA_PATH'):
+            self.data_path = Path(model_data_path)
 
 
 @dataclass
