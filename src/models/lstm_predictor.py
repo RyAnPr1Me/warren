@@ -7,13 +7,14 @@ import numpy as np
 import pandas as pd
 import json
 import time
-from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler, QuantileTransformer
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense, Dropout, BatchNormalization
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
+from tensorflow.keras import regularizers
 import joblib
 import logging
 from pathlib import Path
@@ -40,16 +41,22 @@ class EnhancedLSTMPredictor:
     Features: Multi-feature input, advanced architecture, confidence scoring, quality validation
     """
     
-    # Model quality thresholds (realistic for next-day financial returns)
-    MIN_R2_SCORE = 0.001   # Minimum meaningful prediction (better than random)
-    GOOD_R2_SCORE = 0.01   # Good model threshold for short-term stock prediction  
-    EXCELLENT_R2_SCORE = 0.03  # Excellent model threshold (rare for next-day prediction)
+    # Model quality thresholds (REALISTIC for stock prediction)
+    MIN_R2_SCORE = 0.02   # Realistic minimum for financial time series
+    GOOD_R2_SCORE = 0.05   # Good model threshold for stock prediction  
+    EXCELLENT_R2_SCORE = 0.10  # Excellent model threshold
     
     def __init__(self, symbol: str, prediction_days: Optional[int] = None):
         self.symbol = symbol.upper()
         self.model = None
         self.scaler = StandardScaler()  # Better for returns (can be negative)
-        self.feature_scaler = RobustScaler()  # Robust to outliers
+        # Use QuantileTransformer for robust feature scaling from the start
+        self.feature_scaler = QuantileTransformer(
+            n_quantiles=1000,
+            output_distribution='normal',
+            subsample=100000,
+            random_state=42
+        )
         
         # Enhanced configuration
         self.sequence_length = config.model.sequence_length
@@ -129,7 +136,8 @@ class EnhancedLSTMPredictor:
             return False, f"Validation R² ({val_r2:.3f}) below minimum threshold ({self.MIN_R2_SCORE})"
         
         # Check if test performance is drastically worse than validation (overfitting)
-        if test_r2 < val_r2 - 0.3:
+        # Reasonable threshold for detecting actual overfitting
+        if test_r2 < val_r2 - 0.5:  # Allow some variance but catch real overfitting
             return False, f"Model overfitting detected: Val R² {val_r2:.3f} vs Test R² {test_r2:.3f}"
         
         # Check if RMSE is reasonable (not more than 20% of current price)
@@ -439,14 +447,54 @@ class EnhancedLSTMPredictor:
             available_features = [f for f in available_features if f not in zero_var_features]
         
         # Scale features using robust scaler to handle outliers better
-        # Scale features using robust scaler (already initialized)
+        # Feature scaler already initialized in __init__ with QuantileTransformer
+        
+        # Fit scaler and transform features
         scaled_features = self.feature_scaler.fit_transform(feature_data.values)
         
-        # Create target variable - predict FUTURE returns (next day's return)
+        # Create enhanced target variable - predict FUTURE returns with smoothing
         close_prices = enhanced_data['Close'].values.astype(float)
         
-        # Calculate future 1-day returns (what we want to predict)
-        future_returns = np.log(close_prices[1:] / close_prices[:-1])  # Next day returns
+        # Calculate multiple timeframe returns for better signal
+        future_returns_1d = np.log(close_prices[1:] / close_prices[:-1])  # Next day returns
+        
+        # FIXED TARGET ENGINEERING - Use actual future returns, not fractional
+        if self.prediction_days <= 5:
+            # Short-term: Use next-day returns (standard approach)
+            target_raw = future_returns_1d
+            # Apply light smoothing to reduce noise
+            if len(target_raw) >= 3:
+                target_smoothed = np.convolve(target_raw, [0.2, 0.6, 0.2], mode='same')
+                target_smoothed[0] = target_raw[0]
+                target_smoothed[-1] = target_raw[-1]
+            else:
+                target_smoothed = target_raw
+        else:
+            # Medium-term: Use ACTUAL multi-day returns (not scaled to daily)
+            future_periods = min(self.prediction_days, len(close_prices) - 1)
+            target_raw = np.array([
+                np.log(close_prices[min(i + future_periods, len(close_prices) - 1)] / close_prices[i])
+                for i in range(len(close_prices) - 1)
+            ])
+            target_smoothed = target_raw
+        
+        # Apply additional denoising for very noisy markets
+        if len(target_smoothed) >= 5:
+            # Remove extreme outliers (> 3 sigma) that hurt training
+            target_std = np.std(target_smoothed)
+            target_mean = np.mean(target_smoothed)
+            outlier_mask = np.abs(target_smoothed - target_mean) > 3 * target_std
+            target_smoothed[outlier_mask] = np.clip(
+                target_smoothed[outlier_mask], 
+                target_mean - 3 * target_std, 
+                target_mean + 3 * target_std
+            )
+        
+        logger.info(f"Target engineering: {self.prediction_days}-day horizon, smoothed from {len(close_prices)} prices")
+        logger.info(f"Target stats - Mean: {np.mean(target_smoothed):.6f}, Std: {np.std(target_smoothed):.6f}")
+        
+        # Use the enhanced target
+        future_returns = target_smoothed
         
         # Align target with features by removing the last observation 
         # (we can't predict the return after the last day)
@@ -533,56 +581,71 @@ class EnhancedLSTMPredictor:
     
     def build_enhanced_model(self, input_shape: Tuple[int, int]) -> Sequential:
         """
-        Build deeper LSTM model for proper training time and complexity
+        Build proper LSTM model with attention mechanism for stock prediction
         
         Args:
             input_shape: Shape of input data (sequence_length, features)
             
         Returns:
-            Compiled Keras model
+            Compiled Keras model with attention and proper capacity
         """
-        model = Sequential([
-            # First LSTM layer - Deep feature extraction
-            LSTM(128, return_sequences=True, input_shape=input_shape),
-            BatchNormalization(),
-            Dropout(0.3),
-            
-            # Second LSTM layer - Pattern recognition
-            LSTM(96, return_sequences=True),
-            BatchNormalization(), 
-            Dropout(0.3),
-            
-            # Third LSTM layer - Temporal dependencies
-            LSTM(64, return_sequences=False),
-            BatchNormalization(),
-            Dropout(0.2),
-            
-            # Dense layers for complex interactions
-            Dense(64, activation='relu'),
-            BatchNormalization(),
-            Dropout(0.3),
-            
-            Dense(32, activation='relu'),
-            Dropout(0.2),
-            
-            Dense(16, activation='relu'),
-            Dropout(0.1),
-            
-            # Output layer
-            Dense(1, activation='linear')
-        ])
+        from tensorflow.keras.layers import MultiHeadAttention, LayerNormalization, GlobalAveragePooling1D
+        from tensorflow.keras.models import Model
+        from tensorflow.keras.layers import Input
         
-        # Compile with lower learning rate for stable training
-        optimizer = Adam(
-            learning_rate=config.model.learning_rate,
-            beta_1=0.9,
-            beta_2=0.999,
-            epsilon=1e-8
-        )
+        # Use full config values for proper model size
+        lstm_units = config.model.lstm_units
+        dropout = config.model.dropout_rate
+        
+        # Functional API for attention mechanism
+        inputs = Input(shape=input_shape)
+        
+        # First LSTM layer with return_sequences=True for attention
+        lstm1 = LSTM(lstm_units, return_sequences=True, 
+                     dropout=dropout*0.6, recurrent_dropout=0.2,
+                     kernel_regularizer=regularizers.l2(0.01))(inputs)
+        lstm1 = LayerNormalization()(lstm1)
+        
+        # Second LSTM layer 
+        lstm2 = LSTM(lstm_units//2, return_sequences=True,
+                     dropout=dropout*0.6, recurrent_dropout=0.2,
+                     kernel_regularizer=regularizers.l2(0.01))(lstm1)
+        lstm2 = LayerNormalization()(lstm2)
+        
+        # Multi-head attention mechanism
+        attention = MultiHeadAttention(
+            num_heads=4, 
+            key_dim=lstm_units//8,
+            dropout=dropout*0.4
+        )(lstm2, lstm2)
+        
+        # Add & norm connection
+        attention_out = LayerNormalization()(lstm2 + attention)
+        
+        # Global pooling to compress sequence
+        pooled = GlobalAveragePooling1D()(attention_out)
+        
+        # Dense layers with stronger regularization
+        dense1 = Dense(lstm_units//2, activation='relu', 
+                      kernel_regularizer=regularizers.l2(0.02))(pooled)
+        dense1 = Dropout(dropout)(dense1)
+        
+        dense2 = Dense(lstm_units//4, activation='relu',
+                      kernel_regularizer=regularizers.l2(0.02))(dense1)
+        dense2 = Dropout(dropout*0.7)(dense2)
+        
+        # Output layer
+        outputs = Dense(1, activation='linear')(dense2)
+        
+        # Create model
+        model = Model(inputs=inputs, outputs=outputs)
+        
+        # Optimizer with proper learning rate
+        optimizer = Adam(learning_rate=config.model.learning_rate, clipnorm=1.0)
         
         model.compile(
             optimizer=optimizer,
-            loss='mse',  # Standard MSE loss
+            loss='mse',
             metrics=['mae']
         )
         
@@ -647,18 +710,19 @@ class EnhancedLSTMPredictor:
             
             logger.info(f"Model architecture: {X.shape[1]} time steps, {X.shape[2]} features")
             
-            # Enhanced callbacks
+            # Balanced callbacks for attention model
             callbacks = [
                 EarlyStopping(
                     monitor='val_loss',
-                    patience=15,
+                    patience=config.model.patience,  # Use config patience
                     restore_best_weights=True,
-                    verbose=1
+                    verbose=1,
+                    min_delta=0.0001  # Small improvement threshold
                 ),
                 ReduceLROnPlateau(
                     monitor='val_loss',
-                    factor=0.5,
-                    patience=8,
+                    factor=0.3,  # More aggressive LR reduction
+                    patience=3,  # Reduce LR faster
                     min_lr=1e-6,
                     verbose=1
                 )

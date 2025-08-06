@@ -25,7 +25,7 @@ def debug_features():
     predictor = EnhancedLSTMPredictor("AAPL")
     
     # Generate features
-    features_df = predictor._generate_advanced_features(prices_df)
+    features_df = predictor.prepare_features(prices_df)
     
     print(f"\n🔧 Features generated: {features_df.shape}")
     print(f"📋 Feature columns: {list(features_df.columns)}")
