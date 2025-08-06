@@ -1,0 +1,33 @@
+2025-08-05 22:14:17,669 - src.data.collector - INFO - Fetching fresh data for AAPL
+2025-08-05 22:14:20,128 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-05 22:14:20,130 - src.data.collector - INFO - Returning cached data for AAPL
+2025-08-05 22:14:31,255 - src.data.collector - INFO - Fetching fresh data for TSLA
+2025-08-05 22:14:32,492 - src.data.collector - INFO - Successfully fetched data for TSLA
+2025-08-05 22:14:42,834 - src.data.collector - INFO - Fetching fresh data for GOOGL
+2025-08-05 22:14:44,032 - src.data.collector - INFO - Successfully fetched data for GOOGL
+2025-08-05 22:33:39,368 - src.models.lstm_predictor - INFO - Starting enhanced training for AAPL
+2025-08-05 22:33:39,368 - src.data.collector - INFO - Fetching fresh data for AAPL
+2025-08-05 22:33:40,290 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-05 22:33:40,456 - src.models.lstm_predictor - INFO - Model architecture: 60 time steps, 13 features
+2025-08-05 22:33:42,912 - absl - WARNING - You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+2025-08-05 22:33:43,451 - absl - WARNING - You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+2025-08-05 22:33:43,709 - absl - WARNING - You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+2025-08-05 22:33:43,970 - absl - WARNING - You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+2025-08-05 22:33:44,229 - absl - WARNING - You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+2025-08-05 22:33:44,485 - absl - WARNING - You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+2025-08-05 22:33:44,740 - absl - WARNING - You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+2025-08-05 22:33:44,996 - absl - WARNING - You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+2025-08-05 22:33:45,253 - absl - WARNING - You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+2025-08-05 22:33:49,451 - src.models.lstm_predictor - INFO - Enhanced training completed for AAPL in 10.1s
+2025-08-05 22:33:49,451 - src.models.lstm_predictor - INFO - Final validation RMSE: 17.4536
+2025-08-05 22:33:49,452 - src.models.lstm_predictor - INFO - Model R² score: -14.4315
+2025-08-05 22:34:11,135 - absl - WARNING - Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+2025-08-05 22:34:11,142 - src.models.lstm_predictor - INFO - Loaded enhanced model for AAPL
+2025-08-05 22:34:11,142 - src.data.collector - INFO - Fetching fresh data for AAPL
+2025-08-05 22:34:11,881 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-05 22:34:38,315 - absl - WARNING - Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+2025-08-05 22:34:38,323 - src.models.lstm_predictor - INFO - Loaded enhanced model for AAPL
+2025-08-05 22:34:38,323 - src.data.collector - INFO - Fetching fresh data for AAPL
+2025-08-05 22:34:39,137 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-05 22:35:22,567 - absl - WARNING - Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+2025-08-05 22:35:22,575 - src.models.lstm_predictor - INFO - Loaded enhanced model for AAPL

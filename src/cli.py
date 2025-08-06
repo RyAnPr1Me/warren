@@ -15,6 +15,8 @@ sys.path.append(str(Path(__file__).parent.parent))
 from src.config import config
 from src.data.collector import data_collector
 from src.analysis.technical import technical_analyzer
+from src.models.lstm_predictor import create_enhanced_predictor
+from src.utils.helpers import format_currency, format_percentage
 
 # Configure logging
 logging.basicConfig(
@@ -42,13 +44,21 @@ class StockAICLI:
             formatter_class=argparse.RawDescriptionHelpFormatter,
             epilog="""
 Examples:
-  python cli.py analyze AAPL                    # Get basic analysis for Apple
-  python cli.py price GOOGL                     # Get current price for Google
-  python cli.py recommend TSLA                  # Get buy/sell recommendation for Tesla
-  python cli.py technical MSFT                  # Get technical analysis for Microsoft
-  python cli.py data AMZN --save               # Download and save Amazon data
-  python cli.py train NVDA                     # Train prediction model for NVIDIA
-  python cli.py predict SPY --days 30          # Predict SPY price for 30 days
+  # Basic Analysis (Phase 1)
+  python cli.py analyze AAPL                    # Get comprehensive analysis for Apple
+  python cli.py price GOOGL --real-time         # Get real-time price for Google
+  python cli.py technical TSLA --support-resistance  # Get technical analysis for Tesla
+  python cli.py recommend MSFT                  # Get basic recommendation for Microsoft
+  
+  # AI-Powered Features (Phase 2)
+  python cli.py train AAPL                      # Train AI model for Apple
+  python cli.py predict AAPL --days 30          # AI price prediction for 30 days
+  python cli.py ai-recommend TSLA --detailed    # AI-powered investment recommendation
+  python cli.py model-info NVDA                 # Show AI model performance metrics
+  
+  # Data Management
+  python cli.py data AMZN --save                # Download and save Amazon data
+  python cli.py config --validate               # Validate system configuration
             """
         )
         
@@ -79,15 +89,26 @@ Examples:
         data_parser.add_argument('--period', default='2y', help='Time period (1y, 2y, 5y, max)')
         data_parser.add_argument('--save', action='store_true', help='Save data to CSV file')
         
-        # Train command (placeholder for Phase 1)
-        train_parser = subparsers.add_parser('train', help='Train prediction model')
+        # Train command
+        train_parser = subparsers.add_parser('train', help='Train LSTM prediction model')
         train_parser.add_argument('symbol', help='Stock ticker symbol')
-        train_parser.add_argument('--period', default='2y', help='Training data period')
+        train_parser.add_argument('--period', default='3y', help='Training data period (1y, 2y, 3y, 5y)')
+        train_parser.add_argument('--force', action='store_true', help='Force retrain even if model exists')
         
-        # Predict command (placeholder for Phase 1)
-        predict_parser = subparsers.add_parser('predict', help='Predict stock price')
+        # Predict command
+        predict_parser = subparsers.add_parser('predict', help='AI-powered stock price prediction')
         predict_parser.add_argument('symbol', help='Stock ticker symbol')
         predict_parser.add_argument('--days', type=int, default=60, help='Days to predict ahead')
+        predict_parser.add_argument('--save-report', action='store_true', help='Save detailed prediction report')
+        
+        # AI Recommend command (new Phase 2 feature)
+        ai_recommend_parser = subparsers.add_parser('ai-recommend', help='AI-powered buy/sell recommendation')
+        ai_recommend_parser.add_argument('symbol', help='Stock ticker symbol')
+        ai_recommend_parser.add_argument('--detailed', action='store_true', help='Show detailed analysis')
+        
+        # Model info command
+        model_parser = subparsers.add_parser('model-info', help='Show model information and performance')
+        model_parser.add_argument('symbol', help='Stock ticker symbol')
         
         # Config command
         config_parser = subparsers.add_parser('config', help='Show configuration')
@@ -119,6 +140,10 @@ Examples:
                 self._handle_train(parsed_args)
             elif parsed_args.command == 'predict':
                 self._handle_predict(parsed_args)
+            elif parsed_args.command == 'ai-recommend':
+                self._handle_ai_recommend(parsed_args)
+            elif parsed_args.command == 'model-info':
+                self._handle_model_info(parsed_args)
             elif parsed_args.command == 'config':
                 self._handle_config(parsed_args)
                 
@@ -244,20 +269,217 @@ Examples:
         print("   ✅ Data download complete!")
     
     def _handle_train(self, args):
-        """Handle model training command - placeholder for Phase 1"""
+        """Handle model training command"""
         symbol = args.symbol.upper()
-        print(f"\n🧠 Training prediction model for {symbol}...")
-        print(f"⚠️  Model training functionality coming in Phase 2!")
-        print(f"   For now, using technical analysis for recommendations.")
+        period = args.period
+        
+        print(f"\n🧠 Training LSTM model for {symbol}...")
+        print(f"📊 Using {period} of historical data")
+        
+        try:
+            # Create predictor
+            predictor = create_enhanced_predictor(symbol)
+            
+            # Check if model already exists
+            if predictor.model_path.exists() and not args.force:
+                print(f"⚠️  Model already exists for {symbol}")
+                print(f"   Use --force to retrain or check model performance with: python cli.py model-info {symbol}")
+                return
+            
+            # Start training
+            print(f"🔄 Training in progress... This may take several minutes.")
+            metrics = predictor.train_enhanced_model(period)
+            
+            print(f"\n✅ Training completed!")
+            print(f"📈 Model Performance:")
+            print(f"   Validation R² Score: {metrics['val_r2']:.4f}")
+            print(f"   Validation RMSE: ${metrics['val_rmse']:.2f}")
+            print(f"   Validation MAE: ${metrics['val_mae']:.2f}")
+            print(f"   Training Time: {metrics.get('training_time_seconds', 0):.1f}s")
+            print(f"   Epochs Trained: {metrics['epochs_trained']}")
+            print(f"   Total Parameters: {metrics['total_parameters']:,}")
+            
+            # Model quality assessment
+            r2_score = metrics['val_r2']
+            if r2_score >= 0.8:
+                quality = "Excellent 🎯"
+            elif r2_score >= 0.6:
+                quality = "Good 👍"
+            elif r2_score >= 0.4:
+                quality = "Fair 👌"
+            else:
+                quality = "Needs Improvement 📈"
+            
+            print(f"\n🎯 Model Quality: {quality}")
+            print(f"📋 Model saved to: {predictor.model_path}")
+            
+        except Exception as e:
+            logger.error(f"Training failed for {symbol}: {str(e)}")
+            print(f"❌ Training failed: {str(e)}")
     
     def _handle_predict(self, args):
-        """Handle price prediction command - placeholder for Phase 1"""
+        """Handle AI price prediction command"""
         symbol = args.symbol.upper()
         days = args.days
         
-        print(f"\n🔮 Predicting {symbol} price for {days} days ahead...")
-        print(f"⚠️  AI prediction model coming in Phase 2!")
-        print(f"   For now, see technical analysis with: python cli.py technical {symbol}")
+        print(f"\n🔮 AI Price Prediction for {symbol}")
+        print(f"📅 Forecasting {days} days ahead...")
+        
+        try:
+            # Create predictor
+            predictor = create_enhanced_predictor(symbol)
+            
+            # Check if model exists
+            if not predictor.load_model():
+                print(f"❌ No trained model found for {symbol}")
+                print(f"💡 Train a model first: python cli.py train {symbol}")
+                return
+            
+            # Make prediction
+            prediction = predictor.predict_price(days)
+            
+            print(f"\n📊 AI Prediction Results:")
+            print(f"   Current Price: {format_currency(prediction['current_price'])}")
+            print(f"   Predicted Price ({days} days): {format_currency(prediction['predicted_price'])}")
+            print(f"   Expected Change: {format_percentage(prediction['percent_change'])}")
+            print(f"   Confidence: {prediction['confidence_score']['score']}")
+            
+            # Show confidence intervals if available
+            if 'confidence_intervals' in prediction and prediction['confidence_intervals']:
+                last_ci = prediction['confidence_intervals'][-1]
+                print(f"   95% Confidence Range: {format_currency(last_ci['lower'])} - {format_currency(last_ci['upper'])}")
+            
+            # Model performance
+            if 'model_performance' in prediction:
+                perf = prediction['model_performance']
+                print(f"\n🎯 Model Performance:")
+                print(f"   R² Score: {perf.get('validation_r2', 0):.3f}")
+                print(f"   RMSE: ${perf.get('validation_rmse', 0):.2f}")
+                print(f"   Features Used: {perf.get('num_features', 0)}")
+            
+            # Save detailed report if requested
+            if args.save_report:
+                report_path = Path(f"reports/{symbol}_prediction_report.png")
+                report_path.parent.mkdir(exist_ok=True)
+                
+                report = predictor.create_prediction_report(report_path)
+                print(f"\n📋 Detailed report saved to: {report_path}")
+                
+        except Exception as e:
+            logger.error(f"Prediction failed for {symbol}: {str(e)}")
+            print(f"❌ Prediction failed: {str(e)}")
+    
+    def _handle_ai_recommend(self, args):
+        """Handle AI recommendation command"""
+        symbol = args.symbol.upper()
+        
+        print(f"\n🤖 AI Investment Recommendation for {symbol}")
+        
+        try:
+            # Create predictor
+            predictor = create_enhanced_predictor(symbol)
+            
+            # Check if model exists
+            if not predictor.load_model():
+                print(f"❌ No trained AI model found for {symbol}")
+                print(f"💡 Train a model first: python cli.py train {symbol}")
+                print(f"📊 Using technical analysis instead...")
+                self._handle_recommend(args)
+                return
+            
+            # Get AI recommendation
+            recommendation = predictor.get_enhanced_recommendation()
+            
+            print(f"\n🎯 AI Recommendation: {recommendation['recommendation']}")
+            print(f"💡 Reasoning: {recommendation['reasoning']}")
+            print(f"📈 Expected Return: {format_percentage(recommendation['predicted_change_percent'])}")
+            print(f"🎲 Risk Level: {recommendation['risk_level']}")
+            print(f"⚡ Confidence: {recommendation['confidence']['score']}")
+            print(f"📅 Prediction Horizon: {recommendation['prediction_horizon_days']} days")
+            
+            if args.detailed:
+                print(f"\n📊 Detailed Analysis:")
+                print(f"   Current Price: {format_currency(recommendation['current_price'])}")
+                print(f"   Target Price: {format_currency(recommendation['target_price'])}")
+                
+                # Model performance details
+                if 'model_performance' in recommendation:
+                    perf = recommendation['model_performance']
+                    print(f"\n🧠 AI Model Details:")
+                    print(f"   Model R² Score: {perf.get('validation_r2', 0):.3f}")
+                    print(f"   Model RMSE: ${perf.get('validation_rmse', 0):.2f}")
+                    print(f"   Training Date: {perf.get('training_date', 'Unknown')[:10]}")
+                    print(f"   Features Used: {perf.get('num_features', 0)}")
+            
+        except Exception as e:
+            logger.error(f"AI recommendation failed for {symbol}: {str(e)}")
+            print(f"❌ AI recommendation failed: {str(e)}")
+    
+    def _handle_model_info(self, args):
+        """Handle model information command"""
+        symbol = args.symbol.upper()
+        
+        print(f"\n🧠 AI Model Information for {symbol}")
+        
+        try:
+            # Create predictor
+            predictor = create_enhanced_predictor(symbol)
+            
+            # Check if model exists
+            if not predictor.load_model():
+                print(f"❌ No trained model found for {symbol}")
+                print(f"� Train a model first: python cli.py train {symbol}")
+                return
+            
+            # Display model information
+            if predictor.training_metrics:
+                metrics = predictor.training_metrics
+                
+                print(f"\n📊 Model Performance Metrics:")
+                print(f"   Training R² Score: {metrics.get('train_r2', 0):.4f}")
+                print(f"   Validation R² Score: {metrics.get('val_r2', 0):.4f}")
+                print(f"   Test R² Score: {metrics.get('test_r2', 0):.4f}")
+                print(f"   Validation RMSE: ${metrics.get('val_rmse', 0):.2f}")
+                print(f"   Validation MAE: ${metrics.get('val_mae', 0):.2f}")
+                
+                print(f"\n🏗️ Model Architecture:")
+                print(f"   Sequence Length: {metrics.get('sequence_length', 0)} days")
+                print(f"   Prediction Horizon: {metrics.get('prediction_days', 0)} days")
+                print(f"   Number of Features: {metrics.get('num_features', 0)}")
+                print(f"   Total Parameters: {metrics.get('total_parameters', 0):,}")
+                print(f"   Epochs Trained: {metrics.get('epochs_trained', 0)}")
+                
+                print(f"\n📅 Training Information:")
+                training_date = metrics.get('training_date', 'Unknown')
+                if training_date != 'Unknown':
+                    print(f"   Training Date: {training_date[:10]}")
+                print(f"   Best Validation Loss: {metrics.get('best_val_loss', 0):.6f}")
+                
+                # Model quality assessment
+                r2_score = metrics.get('val_r2', 0)
+                if r2_score >= 0.8:
+                    quality = "Excellent 🎯 - High accuracy predictions"
+                elif r2_score >= 0.6:
+                    quality = "Good 👍 - Reliable for medium-term trends"
+                elif r2_score >= 0.4:
+                    quality = "Fair 👌 - Use with caution"
+                else:
+                    quality = "Poor 📈 - Consider retraining with more data"
+                
+                print(f"\n🎯 Overall Model Quality: {quality}")
+                
+                # File information
+                print(f"\n📁 Model Files:")
+                print(f"   Model: {predictor.model_path}")
+                print(f"   Scaler: {predictor.scaler_path}")
+                print(f"   Feature Scaler: {predictor.feature_scaler_path}")
+                print(f"   Metrics: {predictor.metrics_path}")
+            else:
+                print(f"⚠️  Model loaded but no training metrics available")
+                
+        except Exception as e:
+            logger.error(f"Model info failed for {symbol}: {str(e)}")
+            print(f"❌ Failed to get model info: {str(e)}")
     
     def _handle_config(self, args):
         """Handle configuration command"""

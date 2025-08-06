@@ -1,0 +1,20 @@
+{
+  "train_rmse": 39.11528978040995,
+  "train_mae": 35.81501563509604,
+  "train_r2": -3.9549214276309,
+  "val_rmse": 17.453648515136837,
+  "val_mae": 16.98504093715123,
+  "val_r2": -14.431522219957921,
+  "test_rmse": 25.125743185585684,
+  "test_mae": 24.733263213059,
+  "test_r2": -34.227156661504814,
+  "epochs_trained": 25,
+  "final_train_loss": 0.0710330381989479,
+  "final_val_loss": 0.033192992210388184,
+  "best_val_loss": 0.020497603341937065,
+  "sequence_length": 60,
+  "prediction_days": 60,
+  "num_features": 13,
+  "total_parameters": 142671,
+  "training_date": "2025-08-05T22:33:49.450403"
+}
