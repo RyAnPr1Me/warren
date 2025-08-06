@@ -43,7 +43,8 @@ class StockDataCollector:
     def __init__(self):
         self.cache = {}
         self.cache_expiry = config.cache.expiry_minutes
-        self.validator = StockDataValidator(min_data_points=500)
+        # Use dynamic minimum based on period - shorter periods need fewer points
+        self.validator = StockDataValidator(min_data_points=50)  # More reasonable minimum
         self.pipeline = DataPipeline(self.validator)
         
     def get_stock_data(self, symbol: str, period: str = "2y", validate: bool = True) -> StockData:
@@ -59,13 +60,14 @@ class StockDataCollector:
             StockData object containing price history and company info
         """
         symbol = symbol.upper()
+        cache_key = f"{symbol}_{period}"
         
         # Check cache first
-        if self._is_cached(symbol):
-            logger.info(f"Returning cached data for {symbol}")
-            return self.cache[symbol]
+        if self._is_cached(cache_key):
+            logger.info(f"Returning cached data for {symbol} ({period})")
+            return self.cache[cache_key]
         
-        logger.info(f"Fetching fresh data for {symbol}")
+        logger.info(f"Fetching fresh data for {symbol} ({period})")
         
         try:
             # Get data from yfinance
@@ -106,7 +108,7 @@ class StockDataCollector:
             )
             
             # Cache the data
-            self.cache[symbol] = stock_data
+            self.cache[cache_key] = stock_data
             
             logger.info(f"Successfully fetched data for {symbol}")
             return stock_data
@@ -243,12 +245,12 @@ class StockDataCollector:
         except:
             return 0.5
     
-    def _is_cached(self, symbol: str) -> bool:
+    def _is_cached(self, cache_key: str) -> bool:
         """Check if symbol data is cached and still valid"""
-        if symbol not in self.cache:
+        if cache_key not in self.cache:
             return False
         
-        cached_data = self.cache[symbol]
+        cached_data = self.cache[cache_key]
         time_diff = datetime.now() - cached_data.last_updated
         
         return time_diff.total_seconds() < (self.cache_expiry * 60)

@@ -597,31 +597,22 @@ Examples:
             
             from src.analysis.sentiment import sentiment_engine
             
-            # Get sentiment analysis
+            # Get sentiment analysis with improved output
+            print("\n" + "="*60)
+            
+            # Show the simple summary that anyone can understand
+            simple_summary = sentiment_engine.get_simple_sentiment_summary(symbol)
+            print(simple_summary)
+            
+            # Also show detailed metrics for advanced users
+            print("\n� DETAILED METRICS (for advanced users):")
+            print("-" * 50)
             sentiment_metrics = sentiment_engine.analyze_sentiment(symbol, timeframe)
-            
-            print(f"\n📊 Sentiment Analysis Results for {symbol}:")
-            print(f"Overall Sentiment: {sentiment_metrics.overall_sentiment:.3f} (-1=Bearish, 1=Bullish)")
-            print(f"Confidence Level: {sentiment_metrics.confidence:.1%}")
-            print(f"News Articles: {sentiment_metrics.news_count}")
-            
-            print(f"\n📈 Sentiment Breakdown:")
-            print(f"   Bullish: {sentiment_metrics.bullish_ratio:.1%}")
-            print(f"   Bearish: {sentiment_metrics.bearish_ratio:.1%}")
-            print(f"   Neutral: {sentiment_metrics.neutral_ratio:.1%}")
-            
-            # Interpret sentiment
-            if sentiment_metrics.overall_sentiment > 0.2:
-                interpretation = "🟢 Positive sentiment suggests potential upward pressure"
-            elif sentiment_metrics.overall_sentiment < -0.2:
-                interpretation = "🔴 Negative sentiment suggests potential downward pressure"
-            else:
-                interpretation = "🟡 Neutral sentiment suggests mixed market opinion"
-            
-            print(f"\n💡 Interpretation: {interpretation}")
+            print(sentiment_metrics)
             
         except Exception as e:
             print(f"❌ Error analyzing sentiment: {e}")
+            print("This might be due to API limits, network issues, or missing dependencies.")
     
     def _handle_ensemble(self, args):
         """Handle ensemble model command - Phase 3"""

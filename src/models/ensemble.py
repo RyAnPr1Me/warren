@@ -16,7 +16,7 @@ from pathlib import Path
 
 from ..config import config
 from ..data.collector import StockDataCollector
-from .sentiment import sentiment_engine
+from ..analysis.sentiment import sentiment_engine
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +105,8 @@ class EnsemblePredictor:
         feature_data = enhanced_data[self.feature_columns].copy()
         
         # Handle missing values
-        feature_data = feature_data.fillna(method='ffill').fillna(method='bfill').fillna(0)
+        # Handle missing values in feature data
+        feature_data = feature_data.ffill().bfill().fillna(0)
         
         return feature_data
     
@@ -189,7 +190,8 @@ class EnsemblePredictor:
             feature_data = self.prepare_enhanced_features(prices_df)
             
             # Create target (future returns)
-            close_prices = prices_df['Close'].values
+            # Calculate future returns for targets
+            close_prices = np.array(prices_df['Close'].values, dtype=np.float64)
             future_returns = np.log(close_prices[1:] / close_prices[:-1])
             
             # Align features and targets

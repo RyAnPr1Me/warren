@@ -11,11 +11,27 @@ from pathlib import Path
 # Load environment variables immediately when module is imported
 def _load_env_variables():
     """Load environment variables from .env file at module import time"""
-    from dotenv import load_dotenv
-    
-    env_file = Path('.env')
-    if env_file.exists():
-        load_dotenv(env_file)
+    try:
+        from dotenv import load_dotenv
+        
+        env_file = Path('.env')
+        if env_file.exists():
+            load_dotenv(env_file, override=True)
+            return True
+    except ImportError:
+        # If python-dotenv not available, try manual loading
+        env_file = Path('.env')
+        if env_file.exists():
+            with open(env_file) as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#') and '=' in line:
+                        key, value = line.split('=', 1)
+                        os.environ[key.strip()] = value.strip()
+            return True
+    except Exception:
+        pass
+    return False
 
 # Load environment variables when module is imported
 _load_env_variables()
