@@ -115,3 +115,198 @@
 2025-08-05 23:40:05,107 - src.models.lstm_predictor - INFO - Model architecture: 15 time steps, 8 features
 2025-08-05 23:40:32,383 - src.models.lstm_predictor - ERROR - Model quality validation failed: Validation R² (0.014) below minimum threshold (0.1)
 2025-08-05 23:40:32,384 - src.models.lstm_predictor - INFO - Cleaning up poor quality model files...
+2025-08-05 23:44:56,181 - src.models.lstm_predictor - INFO - Starting enhanced training for AAPL
+2025-08-05 23:44:56,181 - src.data.collector - INFO - Fetching fresh data for AAPL
+2025-08-05 23:44:57,078 - src.data.collector - INFO - Running data validation pipeline for AAPL
+2025-08-05 23:44:57,078 - src.data.validator - INFO - Starting validation for AAPL with 1255 rows
+2025-08-05 23:44:57,090 - src.data.validator - INFO - Validation complete for AAPL: 1255 clean rows
+2025-08-05 23:44:57,091 - src.data.validator - INFO - Pipeline complete for AAPL: 1255 -> 1255 rows
+2025-08-05 23:44:57,091 - src.data.collector - INFO - Data pipeline: 1255 -> 1255 rows
+2025-08-05 23:44:57,405 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-05 23:44:57,671 - src.models.lstm_predictor - INFO - Generated 67 advanced features from 1255 data points
+2025-08-05 23:44:57,671 - src.models.lstm_predictor - INFO - Using 8 features for training: ['Price_SMA5_Ratio', 'Price_SMA20_Ratio', 'Log_Return_1d', 'Log_Return_5d', 'Volatility_10d', 'Volume_Ratio', 'RSI_Normalized', 'MACD_Normalized']
+2025-08-05 23:44:57,675 - src.models.lstm_predictor - INFO - Prepared training data: (1240, 15, 8) features, (1240,) targets
+2025-08-05 23:44:57,675 - src.models.lstm_predictor - INFO - Data splits - Train: 868, Val: 186, Test: 186
+2025-08-05 23:44:57,777 - src.models.lstm_predictor - INFO - Model architecture: 15 time steps, 8 features
+2025-08-05 23:45:34,929 - src.models.lstm_predictor - ERROR - Model quality validation failed: Validation R² (-0.009) below minimum threshold (0.1)
+2025-08-05 23:45:34,930 - src.models.lstm_predictor - INFO - Cleaning up poor quality model files...
+2025-08-05 23:49:33,116 - src.models.lstm_predictor - INFO - Starting enhanced training for AAPL
+2025-08-05 23:49:33,116 - src.data.collector - INFO - Fetching fresh data for AAPL
+2025-08-05 23:49:34,063 - src.data.collector - INFO - Running data validation pipeline for AAPL
+2025-08-05 23:49:34,063 - src.data.validator - INFO - Starting validation for AAPL with 1255 rows
+2025-08-05 23:49:34,077 - src.data.validator - INFO - Validation complete for AAPL: 1255 clean rows
+2025-08-05 23:49:34,078 - src.data.validator - INFO - Pipeline complete for AAPL: 1255 -> 1255 rows
+2025-08-05 23:49:34,078 - src.data.collector - INFO - Data pipeline: 1255 -> 1255 rows
+2025-08-05 23:49:34,412 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-05 23:49:34,668 - src.models.lstm_predictor - INFO - Generated 67 advanced features from 1255 data points
+2025-08-05 23:49:34,668 - src.models.lstm_predictor - INFO - Using 10 features for training: ['Price_SMA5_Ratio', 'Price_SMA20_Ratio', 'Log_Return_1d', 'Log_Return_5d', 'Volatility_10d', 'Volatility_20d', 'Volume_Ratio', 'RSI_Normalized', 'MACD_Normalized', 'BB_Position']
+2025-08-05 23:49:34,670 - src.models.lstm_predictor - INFO - Prepared training data: (1245, 10, 10) features, (1245,) targets
+2025-08-05 23:49:34,671 - src.models.lstm_predictor - INFO - Data splits - Train: 871, Val: 186, Test: 188
+2025-08-05 23:49:34,752 - src.models.lstm_predictor - INFO - Model architecture: 10 time steps, 10 features
+2025-08-05 23:49:39,929 - src.models.lstm_predictor - ERROR - Model quality validation failed: Validation R² (-0.050) below minimum threshold (0.1)
+2025-08-05 23:49:39,930 - src.models.lstm_predictor - INFO - Cleaning up poor quality model files...
+2025-08-05 23:53:57,655 - src.models.lstm_predictor - INFO - Starting enhanced training for AAPL
+2025-08-05 23:53:57,655 - src.data.collector - INFO - Fetching fresh data for AAPL
+2025-08-05 23:53:58,579 - src.data.collector - INFO - Running data validation pipeline for AAPL
+2025-08-05 23:53:58,579 - src.data.validator - INFO - Starting validation for AAPL with 1255 rows
+2025-08-05 23:53:58,589 - src.data.validator - INFO - Validation complete for AAPL: 1255 clean rows
+2025-08-05 23:53:58,590 - src.data.validator - INFO - Pipeline complete for AAPL: 1255 -> 1255 rows
+2025-08-05 23:53:58,590 - src.data.collector - INFO - Data pipeline: 1255 -> 1255 rows
+2025-08-05 23:53:58,936 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-05 23:53:58,961 - src.models.lstm_predictor - INFO - Generated 42 features from 1255 data points
+2025-08-05 23:53:58,962 - src.models.lstm_predictor - INFO - Using 15 features for training: ['Momentum_1d', 'Momentum_3d', 'Momentum_5d', 'Price_SMA5_Ratio', 'Price_SMA20_Ratio', 'SMA_Cross', 'Volatility_5d', 'Vol_Ratio', 'Volume_Ratio', 'Price_Volume', 'RSI_Normalized', 'MACD_Histogram', 'BB_Position', 'Returns_Lag1', 'Returns_Lag2']
+2025-08-05 23:53:58,969 - src.models.lstm_predictor - INFO - Prepared training data: (1244, 10, 15) features, (1244,) targets
+2025-08-05 23:53:58,969 - src.models.lstm_predictor - INFO - Data splits - Train: 870, Val: 186, Test: 188
+2025-08-05 23:53:59,059 - src.models.lstm_predictor - INFO - Model architecture: 10 time steps, 15 features
+2025-08-05 23:54:06,573 - src.models.lstm_predictor - ERROR - Model quality validation failed: Validation R² (-0.066) below minimum threshold (0.1)
+2025-08-05 23:54:06,574 - src.models.lstm_predictor - INFO - Cleaning up poor quality model files...
+2025-08-05 23:57:32,206 - src.models.lstm_predictor - INFO - Starting enhanced training for AAPL
+2025-08-05 23:57:32,207 - src.data.collector - INFO - Fetching fresh data for AAPL
+2025-08-05 23:57:33,248 - src.data.collector - INFO - Running data validation pipeline for AAPL
+2025-08-05 23:57:33,248 - src.data.validator - INFO - Starting validation for AAPL with 1255 rows
+2025-08-05 23:57:33,261 - src.data.validator - INFO - Validation complete for AAPL: 1255 clean rows
+2025-08-05 23:57:33,261 - src.data.validator - INFO - Pipeline complete for AAPL: 1255 -> 1255 rows
+2025-08-05 23:57:33,261 - src.data.collector - INFO - Data pipeline: 1255 -> 1255 rows
+2025-08-05 23:57:33,599 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-05 23:57:33,631 - src.models.lstm_predictor - INFO - Generated 30 historical features from 1255 data points
+2025-08-05 23:57:33,631 - src.models.lstm_predictor - INFO - Using 15 features for training: ['Momentum_1d', 'Momentum_3d', 'Momentum_5d', 'Price_SMA5_Ratio', 'Price_SMA20_Ratio', 'SMA_Cross', 'Volatility_5d', 'Vol_Ratio', 'Volume_Ratio', 'Price_Volume', 'RSI_Normalized', 'MACD_Histogram', 'BB_Position', 'Returns_Lag1', 'Returns_Lag2']
+2025-08-05 23:57:33,638 - src.models.lstm_predictor - INFO - Prepared training data: (1244, 10, 15) features, (1244,) targets
+2025-08-05 23:57:33,638 - src.models.lstm_predictor - INFO - Data splits - Train: 870, Val: 186, Test: 188
+2025-08-05 23:57:33,728 - src.models.lstm_predictor - INFO - Model architecture: 10 time steps, 15 features
+2025-08-05 23:57:42,830 - src.models.lstm_predictor - ERROR - Model quality validation failed: Validation R² (-0.053) below minimum threshold (0.1)
+2025-08-05 23:57:42,830 - src.models.lstm_predictor - INFO - Cleaning up poor quality model files...
+2025-08-06 00:00:17,101 - src.models.lstm_predictor - INFO - Starting enhanced training for AAPL
+2025-08-06 00:00:17,101 - src.data.collector - INFO - Fetching fresh data for AAPL
+2025-08-06 00:00:18,208 - src.data.collector - INFO - Running data validation pipeline for AAPL
+2025-08-06 00:00:18,209 - src.data.validator - INFO - Starting validation for AAPL with 1255 rows
+2025-08-06 00:00:18,221 - src.data.validator - INFO - Validation complete for AAPL: 1255 clean rows
+2025-08-06 00:00:18,222 - src.data.validator - INFO - Pipeline complete for AAPL: 1255 -> 1255 rows
+2025-08-06 00:00:18,222 - src.data.collector - INFO - Data pipeline: 1255 -> 1255 rows
+2025-08-06 00:00:18,615 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-06 00:00:18,638 - src.models.lstm_predictor - INFO - Generated 30 historical features from 1255 data points
+2025-08-06 00:00:18,638 - src.models.lstm_predictor - INFO - Using 15 features for training: ['Momentum_1d', 'Momentum_3d', 'Momentum_5d', 'Price_SMA5_Ratio', 'Price_SMA20_Ratio', 'SMA_Cross', 'Volatility_5d', 'Vol_Ratio', 'Volume_Ratio', 'Price_Volume', 'RSI_Normalized', 'MACD_Histogram', 'BB_Position', 'Returns_Lag1', 'Returns_Lag2']
+2025-08-06 00:00:18,644 - src.models.lstm_predictor - INFO - Prepared training data: (1244, 10, 15) features, (1244,) targets
+2025-08-06 00:00:18,644 - src.models.lstm_predictor - INFO - Data splits - Train: 870, Val: 186, Test: 188
+2025-08-06 00:00:18,765 - src.models.lstm_predictor - INFO - Model architecture: 10 time steps, 15 features
+2025-08-06 00:02:00,905 - src.models.lstm_predictor - ERROR - Model quality validation failed: Validation R² (-0.125) below minimum threshold (0.1)
+2025-08-06 00:02:00,906 - src.models.lstm_predictor - INFO - Cleaning up poor quality model files...
+2025-08-06 00:06:56,189 - src.models.lstm_predictor - INFO - Starting enhanced training for AAPL
+2025-08-06 00:06:56,189 - src.data.collector - INFO - Fetching fresh data for AAPL
+2025-08-06 00:06:57,105 - src.data.collector - INFO - Running data validation pipeline for AAPL
+2025-08-06 00:06:57,105 - src.data.validator - INFO - Starting validation for AAPL with 1255 rows
+2025-08-06 00:06:57,117 - src.data.validator - INFO - Validation complete for AAPL: 1255 clean rows
+2025-08-06 00:06:57,117 - src.data.validator - INFO - Pipeline complete for AAPL: 1255 -> 1255 rows
+2025-08-06 00:06:57,117 - src.data.collector - INFO - Data pipeline: 1255 -> 1255 rows
+2025-08-06 00:06:57,482 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-06 00:06:57,514 - src.models.lstm_predictor - INFO - Generated 30 historical features from 1255 data points
+2025-08-06 00:06:57,515 - src.models.lstm_predictor - INFO - Using 15 features for training: ['Momentum_1d', 'Momentum_3d', 'Momentum_5d', 'Price_SMA5_Ratio', 'Price_SMA20_Ratio', 'SMA_Cross', 'Volatility_5d', 'Vol_Ratio', 'Volume_Ratio', 'Price_Volume', 'RSI_Normalized', 'MACD_Histogram', 'BB_Position', 'Returns_Lag1', 'Returns_Lag2']
+2025-08-06 00:06:57,521 - src.models.lstm_predictor - INFO - Prepared training data: (1244, 10, 15) features, (1244,) targets
+2025-08-06 00:06:57,521 - src.models.lstm_predictor - INFO - Data splits - Train: 870, Val: 186, Test: 188
+2025-08-06 00:06:57,636 - src.models.lstm_predictor - INFO - Model architecture: 10 time steps, 15 features
+2025-08-06 00:07:19,619 - src.models.lstm_predictor - WARNING - High validation loss detected: 0.6599 - model may be poor quality
+2025-08-06 00:07:20,242 - src.models.lstm_predictor - ERROR - Model quality validation failed: Validation R² (0.004) below minimum threshold (0.1)
+2025-08-06 00:07:20,242 - src.models.lstm_predictor - INFO - Cleaning up poor quality model files...
+2025-08-06 00:17:25,775 - src.models.lstm_predictor - INFO - Starting enhanced training for AAPL
+2025-08-06 00:17:25,775 - src.data.collector - INFO - Fetching fresh data for AAPL
+2025-08-06 00:17:27,105 - src.data.collector - INFO - Running data validation pipeline for AAPL
+2025-08-06 00:17:27,105 - src.data.validator - INFO - Starting validation for AAPL with 1255 rows
+2025-08-06 00:17:27,113 - src.data.validator - INFO - Validation complete for AAPL: 1255 clean rows
+2025-08-06 00:17:27,114 - src.data.validator - INFO - Pipeline complete for AAPL: 1255 -> 1255 rows
+2025-08-06 00:17:27,114 - src.data.collector - INFO - Data pipeline: 1255 -> 1255 rows
+2025-08-06 00:17:27,530 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-06 00:17:27,565 - src.models.lstm_predictor - INFO - Generated 30 historical features from 1255 data points
+2025-08-06 00:17:27,565 - src.models.lstm_predictor - INFO - Using 15 features for training: ['Momentum_1d', 'Momentum_3d', 'Momentum_5d', 'Price_SMA5_Ratio', 'Price_SMA20_Ratio', 'SMA_Cross', 'Volatility_5d', 'Vol_Ratio', 'Volume_Ratio', 'Price_Volume', 'RSI_Normalized', 'MACD_Histogram', 'BB_Position', 'Returns_Lag1', 'Returns_Lag2']
+2025-08-06 00:17:27,572 - src.models.lstm_predictor - INFO - Prepared training data: (1244, 10, 15) features, (1244,) targets
+2025-08-06 00:17:27,572 - src.models.lstm_predictor - INFO - Data splits - Train: 870, Val: 186, Test: 188
+2025-08-06 00:17:27,651 - src.models.lstm_predictor - INFO - Model architecture: 10 time steps, 15 features
+2025-08-06 00:17:30,998 - src.models.lstm_predictor - WARNING - High validation loss detected: 0.6593 - model may be poor quality
+2025-08-06 00:17:31,295 - src.models.lstm_predictor - ERROR - Model quality validation failed: Validation R² (0.005) below minimum threshold (0.1)
+2025-08-06 00:17:31,296 - src.models.lstm_predictor - INFO - Cleaning up poor quality model files...
+2025-08-06 00:22:04,998 - src.models.lstm_predictor - INFO - Starting enhanced training for AAPL
+2025-08-06 00:22:04,998 - src.data.collector - INFO - Fetching fresh data for AAPL
+2025-08-06 00:22:06,068 - src.data.collector - INFO - Running data validation pipeline for AAPL
+2025-08-06 00:22:06,068 - src.data.validator - INFO - Starting validation for AAPL with 1255 rows
+2025-08-06 00:22:06,080 - src.data.validator - INFO - Validation complete for AAPL: 1255 clean rows
+2025-08-06 00:22:06,081 - src.data.validator - INFO - Pipeline complete for AAPL: 1255 -> 1255 rows
+2025-08-06 00:22:06,081 - src.data.collector - INFO - Data pipeline: 1255 -> 1255 rows
+2025-08-06 00:22:06,445 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-06 00:22:06,473 - src.models.lstm_predictor - INFO - Generated 30 historical features from 1255 data points
+2025-08-06 00:22:06,473 - src.models.lstm_predictor - INFO - Using 15 features for training: ['Momentum_1d', 'Momentum_3d', 'Momentum_5d', 'Price_SMA5_Ratio', 'Price_SMA20_Ratio', 'SMA_Cross', 'Volatility_5d', 'Vol_Ratio', 'Volume_Ratio', 'Price_Volume', 'RSI_Normalized', 'MACD_Histogram', 'BB_Position', 'Returns_Lag1', 'Returns_Lag2']
+2025-08-06 00:22:06,478 - src.models.lstm_predictor - INFO - Prepared training data: (1244, 10, 15) features, (1244,) targets
+2025-08-06 00:22:06,479 - src.models.lstm_predictor - INFO - Data splits - Train: 870, Val: 186, Test: 188
+2025-08-06 00:22:06,479 - src.models.lstm_predictor - INFO - Target scaling - Train mean: 0.000563, Train std: 0.018393
+2025-08-06 00:22:06,564 - src.models.lstm_predictor - INFO - Model architecture: 10 time steps, 15 features
+2025-08-06 00:22:11,007 - src.models.lstm_predictor - WARNING - High validation loss detected: 0.6640 - model may be poor quality
+2025-08-06 00:22:11,302 - src.models.lstm_predictor - ERROR - Model quality validation failed: Validation R² (0.001) below minimum threshold (0.1)
+2025-08-06 00:22:11,302 - src.models.lstm_predictor - INFO - Cleaning up poor quality model files...
+2025-08-06 00:25:19,422 - src.models.lstm_predictor - INFO - Starting enhanced training for AAPL
+2025-08-06 00:25:19,422 - src.data.collector - INFO - Fetching fresh data for AAPL
+2025-08-06 00:25:20,825 - src.data.collector - INFO - Running data validation pipeline for AAPL
+2025-08-06 00:25:20,826 - src.data.validator - INFO - Starting validation for AAPL with 1255 rows
+2025-08-06 00:25:20,836 - src.data.validator - INFO - Validation complete for AAPL: 1255 clean rows
+2025-08-06 00:25:20,836 - src.data.validator - INFO - Pipeline complete for AAPL: 1255 -> 1255 rows
+2025-08-06 00:25:20,837 - src.data.collector - INFO - Data pipeline: 1255 -> 1255 rows
+2025-08-06 00:25:22,693 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-06 00:25:22,728 - src.models.lstm_predictor - INFO - Generated 30 historical features from 1255 data points
+2025-08-06 00:25:22,728 - src.models.lstm_predictor - INFO - Using 15 features for training: ['Momentum_1d', 'Momentum_3d', 'Momentum_5d', 'Price_SMA5_Ratio', 'Price_SMA20_Ratio', 'SMA_Cross', 'Volatility_5d', 'Vol_Ratio', 'Volume_Ratio', 'Price_Volume', 'RSI_Normalized', 'MACD_Histogram', 'BB_Position', 'Returns_Lag1', 'Returns_Lag2']
+2025-08-06 00:25:22,738 - src.models.lstm_predictor - INFO - Prepared training data: (1244, 10, 15) features, (1244,) targets
+2025-08-06 00:25:22,739 - src.models.lstm_predictor - INFO - Data splits - Train: 870, Val: 186, Test: 188
+2025-08-06 00:25:22,739 - src.models.lstm_predictor - INFO - Target scaling - Train mean: 0.000563, Train std: 0.018393
+2025-08-06 00:25:22,858 - src.models.lstm_predictor - INFO - Model architecture: 10 time steps, 15 features
+2025-08-06 00:25:33,060 - src.models.lstm_predictor - WARNING - High validation loss detected: 0.6664 - model may be poor quality
+2025-08-06 00:25:33,570 - src.models.lstm_predictor - ERROR - Model quality validation failed: Validation R² (-0.003) below minimum threshold (0.1)
+2025-08-06 00:25:33,570 - src.models.lstm_predictor - INFO - Cleaning up poor quality model files...
+2025-08-06 00:27:51,354 - src.models.lstm_predictor - INFO - Starting enhanced training for AAPL
+2025-08-06 00:27:51,354 - src.data.collector - INFO - Fetching fresh data for AAPL
+2025-08-06 00:27:52,302 - src.data.collector - INFO - Running data validation pipeline for AAPL
+2025-08-06 00:27:52,302 - src.data.validator - INFO - Starting validation for AAPL with 751 rows
+2025-08-06 00:27:52,314 - src.data.validator - INFO - Validation complete for AAPL: 751 clean rows
+2025-08-06 00:27:52,315 - src.data.validator - INFO - Pipeline complete for AAPL: 751 -> 751 rows
+2025-08-06 00:27:52,315 - src.data.collector - INFO - Data pipeline: 751 -> 751 rows
+2025-08-06 00:27:52,614 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-06 00:27:52,644 - src.models.lstm_predictor - INFO - Generated 30 historical features from 751 data points
+2025-08-06 00:27:52,644 - src.models.lstm_predictor - INFO - Using 15 features for training: ['Momentum_1d', 'Momentum_3d', 'Momentum_5d', 'Price_SMA5_Ratio', 'Price_SMA20_Ratio', 'SMA_Cross', 'Volatility_5d', 'Vol_Ratio', 'Volume_Ratio', 'Price_Volume', 'RSI_Normalized', 'MACD_Histogram', 'BB_Position', 'Returns_Lag1', 'Returns_Lag2']
+2025-08-06 00:27:52,649 - src.models.lstm_predictor - INFO - Prepared training data: (740, 10, 15) features, (740,) targets
+2025-08-06 00:27:52,650 - src.models.lstm_predictor - INFO - Data splits - Train: 518, Val: 111, Test: 111
+2025-08-06 00:27:52,650 - src.models.lstm_predictor - INFO - Target scaling - Train mean: 0.000569, Train std: 0.016115
+2025-08-06 00:27:52,760 - src.models.lstm_predictor - INFO - Model architecture: 10 time steps, 15 features
+2025-08-06 00:28:01,728 - src.models.lstm_predictor - WARNING - High validation loss detected: 0.7485 - model may be poor quality
+2025-08-06 00:28:02,190 - src.models.lstm_predictor - ERROR - Model quality validation failed: Validation R² (0.011) below minimum threshold (0.1)
+2025-08-06 00:28:02,190 - src.models.lstm_predictor - INFO - Cleaning up poor quality model files...
+2025-08-06 00:29:08,792 - src.models.lstm_predictor - INFO - Starting enhanced training for AAPL
+2025-08-06 00:29:08,792 - src.data.collector - INFO - Fetching fresh data for AAPL
+2025-08-06 00:29:09,782 - src.data.collector - INFO - Running data validation pipeline for AAPL
+2025-08-06 00:29:09,782 - src.data.validator - INFO - Starting validation for AAPL with 751 rows
+2025-08-06 00:29:09,794 - src.data.validator - INFO - Validation complete for AAPL: 751 clean rows
+2025-08-06 00:29:09,795 - src.data.validator - INFO - Pipeline complete for AAPL: 751 -> 751 rows
+2025-08-06 00:29:09,795 - src.data.collector - INFO - Data pipeline: 751 -> 751 rows
+2025-08-06 00:29:10,134 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-06 00:29:10,165 - src.models.lstm_predictor - INFO - Generated 30 historical features from 751 data points
+2025-08-06 00:29:10,166 - src.models.lstm_predictor - INFO - Using 15 features for training: ['Momentum_1d', 'Momentum_3d', 'Momentum_5d', 'Price_SMA5_Ratio', 'Price_SMA20_Ratio', 'SMA_Cross', 'Volatility_5d', 'Vol_Ratio', 'Volume_Ratio', 'Price_Volume', 'RSI_Normalized', 'MACD_Histogram', 'BB_Position', 'Returns_Lag1', 'Returns_Lag2']
+2025-08-06 00:29:10,170 - src.models.lstm_predictor - INFO - Prepared training data: (740, 10, 15) features, (740,) targets
+2025-08-06 00:29:10,171 - src.models.lstm_predictor - INFO - Data splits - Train: 518, Val: 111, Test: 111
+2025-08-06 00:29:10,172 - src.models.lstm_predictor - INFO - Target scaling - Train mean: 0.000569, Train std: 0.016115
+2025-08-06 00:29:10,283 - src.models.lstm_predictor - INFO - Model architecture: 10 time steps, 15 features
+2025-08-06 00:29:18,531 - src.models.lstm_predictor - WARNING - High validation loss detected: 0.7549 - model may be poor quality
+2025-08-06 00:29:18,991 - src.models.lstm_predictor - ERROR - Model quality validation failed: Validation R² (0.003) below minimum threshold (0.005)
+2025-08-06 00:29:18,991 - src.models.lstm_predictor - INFO - Cleaning up poor quality model files...
+2025-08-06 00:46:26,907 - src.models.lstm_predictor - INFO - Starting enhanced training for AAPL
+2025-08-06 00:46:26,907 - src.data.collector - INFO - Fetching fresh data for AAPL
+2025-08-06 00:46:27,869 - src.data.collector - INFO - Running data validation pipeline for AAPL
+2025-08-06 00:46:27,869 - src.data.validator - INFO - Starting validation for AAPL with 751 rows
+2025-08-06 00:46:27,882 - src.data.validator - INFO - Validation complete for AAPL: 751 clean rows
+2025-08-06 00:46:27,883 - src.data.validator - INFO - Pipeline complete for AAPL: 751 -> 751 rows
+2025-08-06 00:46:27,883 - src.data.collector - INFO - Data pipeline: 751 -> 751 rows
+2025-08-06 00:46:28,242 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-06 00:46:28,276 - src.models.lstm_predictor - INFO - Generated 30 historical features from 751 data points
+2025-08-06 00:46:28,276 - src.models.lstm_predictor - INFO - Using 15 features for training: ['Momentum_1d', 'Momentum_3d', 'Momentum_5d', 'Price_SMA5_Ratio', 'Price_SMA20_Ratio', 'SMA_Cross', 'Volatility_5d', 'Vol_Ratio', 'Volume_Ratio', 'Price_Volume', 'RSI_Normalized', 'MACD_Histogram', 'BB_Position', 'Returns_Lag1', 'Returns_Lag2']
+2025-08-06 00:46:28,281 - src.models.lstm_predictor - INFO - Prepared training data: (740, 10, 15) features, (740,) targets
+2025-08-06 00:46:28,282 - src.models.lstm_predictor - INFO - Data splits - Train: 518, Val: 111, Test: 111
+2025-08-06 00:46:28,282 - src.models.lstm_predictor - INFO - Target scaling - Train mean: 0.000569, Train std: 0.016115
+2025-08-06 00:46:28,398 - src.models.lstm_predictor - INFO - Model architecture: 10 time steps, 15 features
+2025-08-06 00:46:46,809 - src.models.lstm_predictor - WARNING - High validation loss detected: 0.7282 - model may be poor quality
+2025-08-06 00:46:47,284 - src.data.collector - INFO - Returning cached data for AAPL
+2025-08-06 00:46:47,287 - src.models.lstm_predictor - INFO - Model passed quality validation: Model quality acceptable: R² = 0.038
+2025-08-06 00:46:47,287 - absl - WARNING - You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+2025-08-06 00:46:47,325 - src.models.lstm_predictor - INFO - Metrics saved to data/models/AAPL/AAPL_metrics.json
+2025-08-06 00:46:47,325 - src.models.lstm_predictor - INFO - Enhanced training completed successfully - Quality: Excellent 🎯

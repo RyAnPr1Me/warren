@@ -36,18 +36,18 @@ class ModelConfig:
     """Configuration for LSTM model training and prediction"""
     
     # Data settings
-    model_data_path: str = "data"      # Base path for model data storage
+    model_data_path: Path = Path("data")  # Base path for model data storage
     
     # Model architecture
-    sequence_length: int = 15          # Reduced for better generalization 
+    sequence_length: int = 10          # Optimized for better generalization 
     lstm_units: int = 128              # Hidden units in LSTM layers
     dropout_rate: float = 0.3          # Dropout for regularization
     
     # Training parameters
-    batch_size: int = 32               # Batch size for training
-    epochs: int = 100                  # Maximum epochs
-    learning_rate: float = 0.001       # Initial learning rate
-    patience: int = 15                 # Early stopping patience
+    batch_size: int = 16               # Smaller batch size for more steps per epoch
+    epochs: int = 150                  # More epochs for proper training
+    learning_rate: float = 0.0005      # Lower learning rate for stable training
+    patience: int = 15                 # More patience for complex model
     validation_split: float = 0.15     # Validation data split
     test_split: float = 0.15           # Test data split
     
@@ -55,8 +55,14 @@ class ModelConfig:
     min_r2_score: float = 0.1          # Minimum R² for model acceptance
     
     # Prediction settings
-    prediction_days: int = 5           # Default days to predict ahead
+    prediction_days: int = 15          # Default: 3 weeks (15 trading days) 
     confidence_level: float = 0.95     # Confidence level for intervals
+    
+    # Buy/Sell rating thresholds (percentage changes)
+    strong_buy_threshold: float = 0.10   # 10%+ predicted gain = Strong Buy
+    buy_threshold: float = 0.05         # 5%+ predicted gain = Buy  
+    sell_threshold: float = -0.05       # 5%+ predicted loss = Sell
+    strong_sell_threshold: float = -0.10 # 10%+ predicted loss = Strong Sell
     
     # Data storage
     data_path: Path = Path("data/models")  # Path for model storage

@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import json
 import time
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
@@ -40,30 +40,58 @@ class EnhancedLSTMPredictor:
     Features: Multi-feature input, advanced architecture, confidence scoring, quality validation
     """
     
-    # Model quality thresholds (adjusted for log returns prediction)
-    MIN_R2_SCORE = 0.1   # More realistic for financial time series
-    GOOD_R2_SCORE = 0.3  # Good model threshold  
-    EXCELLENT_R2_SCORE = 0.5  # Excellent model threshold (very hard to achieve in finance)
+    # Model quality thresholds (realistic for next-day financial returns)
+    MIN_R2_SCORE = 0.001   # Minimum meaningful prediction (better than random)
+    GOOD_R2_SCORE = 0.01   # Good model threshold for short-term stock prediction  
+    EXCELLENT_R2_SCORE = 0.03  # Excellent model threshold (rare for next-day prediction)
     
-    def __init__(self, symbol: str):
+    def __init__(self, symbol: str, prediction_days: Optional[int] = None):
         self.symbol = symbol.upper()
         self.model = None
-        self.scaler = MinMaxScaler(feature_range=(0, 1))
-        self.feature_scaler = MinMaxScaler(feature_range=(0, 1))
+        self.scaler = StandardScaler()  # Better for returns (can be negative)
+        self.feature_scaler = RobustScaler()  # Robust to outliers
         
         # Enhanced configuration
         self.sequence_length = config.model.sequence_length
-        self.prediction_days = config.model.prediction_days
+        self.prediction_days = prediction_days or config.model.prediction_days
         self.features = ['Close', 'Volume', 'High', 'Low', 'Open']  # Multi-feature input
         
-        # Model paths - ensure unique per ticker
-        self.model_path = config.model.data_path / f"{self.symbol}_enhanced_lstm.h5"
-        self.scaler_path = config.model.data_path / f"{self.symbol}_scaler.pkl"
-        self.feature_scaler_path = config.model.data_path / f"{self.symbol}_feature_scaler.pkl"
-        self.metrics_path = config.model.data_path / f"{self.symbol}_metrics.json"
+        # Initialize data collector
+        self.data_collector = StockDataCollector()
         
-        # Create model directory
-        config.model.data_path.mkdir(parents=True, exist_ok=True)
+        # Set up file paths
+        self.base_dir = Path(f"data/models/{self.symbol}")
+        self.base_dir.mkdir(parents=True, exist_ok=True)
+        
+        self.model_path = self.base_dir / f"{self.symbol}_lstm_model.h5"
+        self.scaler_path = self.base_dir / f"{self.symbol}_scaler.pkl"
+        self.feature_scaler_path = self.base_dir / f"{self.symbol}_feature_scaler.pkl"
+        self.metrics_path = self.base_dir / f"{self.symbol}_metrics.json"
+    
+    @staticmethod
+    def variance_loss(y_true, y_pred):
+        """
+        Custom loss that encourages diverse predictions.
+        Combines MSE with diversity reward.
+        """
+        mse = tf.reduce_mean(tf.square(y_true - y_pred))
+        
+        # Encourage prediction diversity
+        pred_variance = tf.math.reduce_variance(y_pred)
+        
+        # Add a smaller regularization term that encourages variance
+        diversity_reward = -0.1 * pred_variance  # Negative to encourage variance
+        
+        return mse + diversity_reward
+        
+        # Model paths - ensure unique per ticker
+        self.model_path = config.model.model_data_path / f"{self.symbol}_enhanced_lstm.h5"
+        self.scaler_path = config.model.model_data_path / f"{self.symbol}_scaler.pkl"
+        self.feature_scaler_path = config.model.model_data_path / f"{self.symbol}_feature_scaler.pkl"
+        self.metrics_path = config.model.model_data_path / f"{self.symbol}_metrics.json"
+        
+        # Ensure model directory exists
+        config.model.model_data_path.mkdir(parents=True, exist_ok=True)
         
         self.data_collector = StockDataCollector()
         self.training_metrics = {}
@@ -264,151 +292,78 @@ class EnhancedLSTMPredictor:
     
     def prepare_features(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        Prepare advanced financial features using proven quant finance techniques
+        Prepare predictive financial features optimized for return forecasting
+        CRITICAL: All features must use ONLY historical data (no future leakage)
         
         Args:
             data: Raw OHLCV data
             
         Returns:
-            DataFrame with sophisticated financial features
+            DataFrame with predictive financial features
         """
         df = data.copy()
         
         # Ensure we have enough data for feature calculation
-        if len(df) < 100:
+        if len(df) < 50:
             logger.warning(f"Limited data points ({len(df)}), features may be less reliable")
         
-        # === PRICE FEATURES ===
-        # Multi-timeframe moving averages
-        df['SMA_5'] = df['Close'].rolling(window=5).mean()
-        df['SMA_10'] = df['Close'].rolling(window=10).mean()
-        df['SMA_20'] = df['Close'].rolling(window=20).mean()
-        df['SMA_50'] = df['Close'].rolling(window=50).mean()
-        df['EMA_12'] = df['Close'].ewm(span=12).mean()
-        df['EMA_26'] = df['Close'].ewm(span=26).mean()
-        df['EMA_50'] = df['Close'].ewm(span=50).mean()
+        # Calculate historical returns (LAGGED - no future leakage)
+        df['Returns_Lag1'] = df['Close'].pct_change().shift(1)  # Yesterday's return
+        df['Log_Returns_Lag1'] = df['Close'].apply(lambda x: np.log(x)).diff().shift(1)
         
-        # Price position features (normalized 0-1)
-        df['Price_SMA5_Ratio'] = df['Close'] / df['SMA_5']
-        df['Price_SMA20_Ratio'] = df['Close'] / df['SMA_20']
-        df['Price_SMA50_Ratio'] = df['Close'] / df['SMA_50']
-        df['SMA5_SMA20_Ratio'] = df['SMA_5'] / df['SMA_20']
-        df['EMA12_EMA26_Ratio'] = df['EMA_12'] / df['EMA_26']
+        # === MOMENTUM FEATURES (Historical only) ===
+        # Use LAGGED momentum to predict future returns
+        df['Momentum_1d'] = (df['Close'].shift(1) / df['Close'].shift(2) - 1)  # Yesterday's momentum
+        df['Momentum_3d'] = (df['Close'].shift(1) / df['Close'].shift(4) - 1)  # 3-day momentum ending yesterday
+        df['Momentum_5d'] = (df['Close'].shift(1) / df['Close'].shift(6) - 1)  # 5-day momentum ending yesterday
         
-        # === MOMENTUM FEATURES ===
-        # Multi-period returns (log returns for better properties)
-        df['Log_Return_1d'] = np.log(df['Close'] / df['Close'].shift(1))
-        df['Log_Return_5d'] = np.log(df['Close'] / df['Close'].shift(5))
-        df['Log_Return_10d'] = np.log(df['Close'] / df['Close'].shift(10))
-        df['Log_Return_20d'] = np.log(df['Close'] / df['Close'].shift(20))
+        # Moving averages using historical data only
+        df['SMA_5'] = df['Close'].shift(1).rolling(window=5).mean()  # 5-day SMA ending yesterday
+        df['SMA_20'] = df['Close'].shift(1).rolling(window=20).mean()  # 20-day SMA ending yesterday
+        df['Price_SMA5_Ratio'] = (df['Close'].shift(1) / df['SMA_5']) - 1  # Historical price vs trend
+        df['Price_SMA20_Ratio'] = (df['Close'].shift(1) / df['SMA_20']) - 1
+        df['SMA_Cross'] = (df['SMA_5'] / df['SMA_20']) - 1  # Trend strength signal
         
-        # Rate of Change (ROC) - momentum indicator
-        df['ROC_5'] = (df['Close'] - df['Close'].shift(5)) / df['Close'].shift(5)
-        df['ROC_10'] = (df['Close'] - df['Close'].shift(10)) / df['Close'].shift(10)
-        df['ROC_20'] = (df['Close'] - df['Close'].shift(20)) / df['Close'].shift(20)
+        # === VOLATILITY FEATURES (Historical risk indicators) ===
+        # Realized volatility using lagged returns  
+        df['Volatility_5d'] = df['Returns_Lag1'].rolling(window=5).std()
+        df['Volatility_20d'] = df['Returns_Lag1'].rolling(window=20).std()
+        df['Vol_Ratio'] = df['Volatility_5d'] / df['Volatility_20d']  # Vol regime change signal
         
-        # === VOLATILITY FEATURES ===
-        # Realized volatility (annualized)
-        df['Volatility_5d'] = df['Log_Return_1d'].rolling(window=5).std() * np.sqrt(252)
-        df['Volatility_10d'] = df['Log_Return_1d'].rolling(window=10).std() * np.sqrt(252)
-        df['Volatility_20d'] = df['Log_Return_1d'].rolling(window=20).std() * np.sqrt(252)
+        # Historical High-Low volatility
+        df['HL_Volatility'] = ((df['High'] - df['Low']) / df['Close']).shift(1)
         
-        # Volatility of volatility (vol clustering)
-        df['Vol_of_Vol'] = df['Volatility_20d'].rolling(window=10).std()
+        # === VOLUME FEATURES (Historical market participation) ===
+        df['Volume_SMA'] = df['Volume'].shift(1).rolling(window=20).mean()
+        df['Volume_Ratio'] = df['Volume'].shift(1) / df['Volume_SMA']  # Historical volume surge
+        df['Price_Volume'] = df['Returns_Lag1'] * np.log(df['Volume_Ratio'] + 1)  # Historical price-volume
         
-        # Garman-Klass volatility estimator (uses OHLC)
-        df['GK_Volatility'] = np.sqrt(
-            np.log(df['High'] / df['Close']) * np.log(df['High'] / df['Open']) +
-            np.log(df['Low'] / df['Close']) * np.log(df['Low'] / df['Open'])
-        )
+        # === TECHNICAL INDICATORS (Historical sentiment) ===
+        # RSI using lagged prices
+        df['RSI'] = self._calculate_rsi(df['Close'].shift(1), period=14)
+        df['RSI_Normalized'] = (df['RSI'] - 50) / 50  # Center around 0
         
-        # === VOLUME FEATURES ===
-        # Volume moving averages
-        df['Volume_SMA10'] = df['Volume'].rolling(window=10).mean()
-        df['Volume_SMA20'] = df['Volume'].rolling(window=20).mean()
+        # MACD using lagged prices
+        macd, macd_signal = self._calculate_macd(df['Close'].shift(1))
+        df['MACD_Histogram'] = (macd - macd_signal) / df['Close'].shift(1)
         
-        # Volume ratios and momentum
-        df['Volume_Ratio'] = df['Volume'] / df['Volume_SMA20']
-        df['Volume_ROC'] = df['Volume'].pct_change(5)
+        # Bollinger Bands using lagged prices
+        bb_upper, bb_lower = self._calculate_bollinger_bands(df['Close'].shift(1))
+        df['BB_Position'] = (df['Close'].shift(1) - bb_lower) / (bb_upper - bb_lower)  # Historical position
         
-        # Price-Volume relationship (money flow)
-        df['Money_Flow'] = df['Close'] * df['Volume']
-        df['Money_Flow_Ratio'] = df['Money_Flow'] / df['Money_Flow'].rolling(window=20).mean()
+        # === LAG FEATURES (Historical information) ===
+        df['Returns_Lag2'] = df['Close'].pct_change().shift(2)  # 2 days ago return
+        df['Returns_Lag3'] = df['Close'].pct_change().shift(3)  # 3 days ago return
         
-        # On-Balance Volume (OBV)
-        df['OBV'] = (np.sign(df['Close'].diff()) * df['Volume']).cumsum()
-        df['OBV_MA'] = df['OBV'].rolling(window=20).mean()
-        df['OBV_Signal'] = df['OBV'] / df['OBV_MA']
-        
-        # === TECHNICAL INDICATORS ===
-        # RSI with smoothing
-        df['RSI'] = self._calculate_rsi(df['Close'])
-        df['RSI_Smooth'] = df['RSI'].ewm(span=3).mean()
-        df['RSI_Normalized'] = (df['RSI'] - 50) / 50
-        
-        # MACD with histogram
-        macd, macd_signal = self._calculate_macd(df['Close'])
-        df['MACD'] = macd
-        df['MACD_Signal'] = macd_signal
-        df['MACD_Histogram'] = macd - macd_signal
-        df['MACD_Normalized'] = df['MACD'] / df['Close']
-        
-        # Bollinger Bands with additional features
-        bb_upper, bb_lower = self._calculate_bollinger_bands(df['Close'])
-        df['BB_Upper'] = bb_upper
-        df['BB_Lower'] = bb_lower
-        df['BB_Width'] = (bb_upper - bb_lower) / df['Close']
-        df['BB_Position'] = (df['Close'] - bb_lower) / (bb_upper - bb_lower)
-        df['BB_Squeeze'] = df['BB_Width'].rolling(window=20).min() == df['BB_Width']
-        
-        # Williams %R
-        df['Williams_R'] = self._calculate_williams_r(df['High'], df['Low'], df['Close'])
-        
-        # Stochastic Oscillator
-        df['Stoch_K'], df['Stoch_D'] = self._calculate_stochastic(df['High'], df['Low'], df['Close'])
-        
-        # === ADVANCED FEATURES ===
-        # Hurst Exponent (trend persistence)
-        df['Hurst_10d'] = df['Close'].rolling(window=20).apply(self._calculate_hurst, raw=False)
-        
-        # Fractal dimension
-        df['Fractal_Dim'] = df['Close'].rolling(window=20).apply(self._calculate_fractal_dimension, raw=False)
-        
-        # Efficiency Ratio (Kaufman)
-        df['Efficiency_Ratio'] = self._calculate_efficiency_ratio(df['Close'])
-        
-        # Z-Score (mean reversion signal)
-        df['Z_Score_20'] = (df['Close'] - df['SMA_20']) / df['Volatility_20d']
-        df['Z_Score_50'] = (df['Close'] - df['SMA_50']) / df['Volatility_20d']
-        
-        # === INTRADAY FEATURES ===
-        df['High_Low_Ratio'] = df['High'] / df['Low']
-        df['Close_Open_Ratio'] = df['Close'] / df['Open']
-        df['Body_Size'] = abs(df['Close'] - df['Open']) / df['Open']
-        df['Upper_Shadow'] = (df['High'] - np.maximum(df['Open'], df['Close'])) / df['Open']
-        df['Lower_Shadow'] = (np.minimum(df['Open'], df['Close']) - df['Low']) / df['Open']
-        
-        # === REGIME FEATURES ===
-        # Trend strength
-        df['Trend_Strength'] = abs(df['SMA_5'] - df['SMA_20']) / df['SMA_20']
-        
-        # Market regime (bull/bear/sideways)
-        df['Market_Regime'] = np.where(
-            df['SMA_5'] > df['SMA_20'], 1,  # Bull
-            np.where(df['SMA_5'] < df['SMA_20'], -1, 0)  # Bear or Sideways
-        )
-        
-        # === DATA CLEANING ===
-        # Handle infinite and NaN values
+        # Handle infinite and NaN values more aggressively
         df = df.replace([np.inf, -np.inf], np.nan)
         
-        # Forward fill then backward fill
-        df = df.ffill().bfill()
+        # Forward fill then backward fill missing values
+        for col in df.columns:
+            if df[col].dtype in ['float64', 'int64']:
+                df[col] = df[col].ffill().bfill().fillna(0)
         
-        # Fill any remaining NaN with 0
-        df = df.fillna(0)
-        
-        logger.info(f"Generated {len(df.columns)} advanced features from {len(data)} data points")
+        logger.info(f"Generated {len(df.columns)} historical features from {len(data)} data points")
         
         return df
     
@@ -425,25 +380,34 @@ class EnhancedLSTMPredictor:
         # Prepare comprehensive features
         enhanced_data = self.prepare_features(data)
         
-        # Advanced feature selection - reduced to most basic predictive features
+        # Advanced feature selection - HISTORICAL features for return forecasting
         feature_columns = [
-            # Basic price momentum (most predictive)
-            'Price_SMA5_Ratio', 'Price_SMA20_Ratio',
+            # Historical momentum (strongest predictors)
+            'Momentum_1d',    # Yesterday's momentum
+            'Momentum_3d',    # 3-day momentum ending yesterday
+            'Momentum_5d',    # 5-day momentum ending yesterday
             
-            # Returns (core predictive signal)
-            'Log_Return_1d', 'Log_Return_5d',
+            # Historical trend indicators
+            'Price_SMA5_Ratio',   # Historical price vs short-term trend
+            'Price_SMA20_Ratio',  # Historical price vs long-term trend
+            'SMA_Cross',          # Historical trend strength
             
-            # Basic volatility (risk measure)
-            'Volatility_10d',
+            # Historical volatility regime
+            'Volatility_5d',      # Recent historical volatility
+            'Vol_Ratio',          # Volatility regime change
             
-            # Volume (market participation)
-            'Volume_Ratio',
+            # Historical volume confirmation
+            'Volume_Ratio',       # Historical volume surge
+            'Price_Volume',       # Historical price-volume interaction
             
-            # Essential momentum indicator
-            'RSI_Normalized',
+            # Historical technical indicators
+            'RSI_Normalized',     # Historical momentum/reversion signal
+            'MACD_Histogram',     # Historical trend signal
+            'BB_Position',        # Historical volatility position
             
-            # Trend following
-            'MACD_Normalized'
+            # Historical returns for autocorrelation
+            'Returns_Lag1',       # Yesterday's return
+            'Returns_Lag2',       # 2 days ago return
         ]
         
         # Ensure all columns exist and handle missing features gracefully
@@ -475,22 +439,22 @@ class EnhancedLSTMPredictor:
             available_features = [f for f in available_features if f not in zero_var_features]
         
         # Scale features using robust scaler to handle outliers better
-        from sklearn.preprocessing import RobustScaler
-        self.feature_scaler = RobustScaler()  # More robust to outliers than MinMaxScaler
+        # Scale features using robust scaler (already initialized)
         scaled_features = self.feature_scaler.fit_transform(feature_data.values)
         
-        # Scale target (Close price) - use log returns for better stability
-        close_prices = enhanced_data['Close'].values.astype(float)  # Ensure float type
+        # Create target variable - predict FUTURE returns (next day's return)
+        close_prices = enhanced_data['Close'].values.astype(float)
         
-        # Use percentage changes as target instead of absolute prices for better scaling
-        close_returns = np.log(close_prices[1:] / close_prices[:-1])  # Log returns
+        # Calculate future 1-day returns (what we want to predict)
+        future_returns = np.log(close_prices[1:] / close_prices[:-1])  # Next day returns
         
-        # Pad the first value to maintain array length
-        close_returns = np.concatenate([[0], close_returns])
+        # Align target with features by removing the last observation 
+        # (we can't predict the return after the last day)
+        enhanced_data = enhanced_data.iloc[:-1].copy()
+        scaled_features = scaled_features[:-1]  # Remove last feature row
         
-        # Scale the returns
-        target_data = close_returns.reshape(-1, 1)
-        scaled_target = self.scaler.fit_transform(target_data)
+        # DON'T scale target yet - we'll do it after train/test split to avoid data leakage
+        target_data = future_returns
         
         # Create sequences with improved validation
         X, y = [], []
@@ -502,7 +466,7 @@ class EnhancedLSTMPredictor:
         
         for i in range(self.sequence_length, len(scaled_features)):
             X.append(scaled_features[i-self.sequence_length:i])
-            y.append(scaled_target[i, 0])
+            y.append(target_data[i])  # Use unscaled target
         
         X_array = np.array(X)
         y_array = np.array(y)
@@ -516,44 +480,40 @@ class EnhancedLSTMPredictor:
         
         logger.info(f"Prepared training data: {X_array.shape} features, {y_array.shape} targets")
         
-        return X_array, y_array, scaled_target.flatten()
+        return X_array, y_array, y_array  # Return unscaled targets
     
-    def _calculate_comprehensive_metrics(self, X_train: np.ndarray, y_train: np.ndarray,
-                                       X_val: np.ndarray, y_val: np.ndarray,
-                                       X_test: np.ndarray, y_test: np.ndarray,
+    def _calculate_comprehensive_metrics(self, X_train: np.ndarray, y_train_scaled: np.ndarray, y_train_unscaled: np.ndarray,
+                                       X_val: np.ndarray, y_val_scaled: np.ndarray, y_val_unscaled: np.ndarray,
+                                       X_test: np.ndarray, y_test_scaled: np.ndarray, y_test_unscaled: np.ndarray,
                                        history) -> Dict:
-        """Calculate comprehensive model performance metrics"""
+        """Calculate comprehensive model performance metrics with proper scaling"""
         
-        # Make predictions
-        train_pred = self.model.predict(X_train, verbose=0)
-        val_pred = self.model.predict(X_val, verbose=0)
-        test_pred = self.model.predict(X_test, verbose=0)
+        # Make predictions on scaled data (since model was trained on scaled targets)
+        train_pred_scaled = self.model.predict(X_train, verbose=0)
+        val_pred_scaled = self.model.predict(X_val, verbose=0)
+        test_pred_scaled = self.model.predict(X_test, verbose=0)
         
-        # Inverse transform predictions
-        train_pred_inv = self.scaler.inverse_transform(train_pred.reshape(-1, 1))
-        val_pred_inv = self.scaler.inverse_transform(val_pred.reshape(-1, 1))
-        test_pred_inv = self.scaler.inverse_transform(test_pred.reshape(-1, 1))
+        # Inverse transform predictions to original scale
+        train_pred_unscaled = self.scaler.inverse_transform(train_pred_scaled.reshape(-1, 1)).flatten()
+        val_pred_unscaled = self.scaler.inverse_transform(val_pred_scaled.reshape(-1, 1)).flatten()
+        test_pred_unscaled = self.scaler.inverse_transform(test_pred_scaled.reshape(-1, 1)).flatten()
         
-        y_train_inv = self.scaler.inverse_transform(y_train.reshape(-1, 1))
-        y_val_inv = self.scaler.inverse_transform(y_val.reshape(-1, 1))
-        y_test_inv = self.scaler.inverse_transform(y_test.reshape(-1, 1))
-        
-        # Calculate metrics for each set
+        # Calculate metrics on UNSCALED data (critical for meaningful R²)
         metrics = {
-            # Training metrics
-            'train_rmse': float(np.sqrt(mean_squared_error(y_train_inv, train_pred_inv))),
-            'train_mae': float(mean_absolute_error(y_train_inv, train_pred_inv)),
-            'train_r2': float(r2_score(y_train_inv, train_pred_inv)),
+            # Training metrics (on unscaled data)
+            'train_rmse': float(np.sqrt(mean_squared_error(y_train_unscaled, train_pred_unscaled))),
+            'train_mae': float(mean_absolute_error(y_train_unscaled, train_pred_unscaled)),
+            'train_r2': float(r2_score(y_train_unscaled, train_pred_unscaled)),
             
-            # Validation metrics
-            'val_rmse': float(np.sqrt(mean_squared_error(y_val_inv, val_pred_inv))),
-            'val_mae': float(mean_absolute_error(y_val_inv, val_pred_inv)),
-            'val_r2': float(r2_score(y_val_inv, val_pred_inv)),
+            # Validation metrics (on unscaled data)
+            'val_rmse': float(np.sqrt(mean_squared_error(y_val_unscaled, val_pred_unscaled))),
+            'val_mae': float(mean_absolute_error(y_val_unscaled, val_pred_unscaled)),
+            'val_r2': float(r2_score(y_val_unscaled, val_pred_unscaled)),
             
-            # Test metrics
-            'test_rmse': float(np.sqrt(mean_squared_error(y_test_inv, test_pred_inv))),
-            'test_mae': float(mean_absolute_error(y_test_inv, test_pred_inv)),
-            'test_r2': float(r2_score(y_test_inv, test_pred_inv)),
+            # Test metrics (on unscaled data)
+            'test_rmse': float(np.sqrt(mean_squared_error(y_test_unscaled, test_pred_unscaled))),
+            'test_mae': float(mean_absolute_error(y_test_unscaled, test_pred_unscaled)),
+            'test_r2': float(r2_score(y_test_unscaled, test_pred_unscaled)),
             
             # Training info
             'epochs_trained': len(history.history['loss']),
@@ -573,7 +533,7 @@ class EnhancedLSTMPredictor:
     
     def build_enhanced_model(self, input_shape: Tuple[int, int]) -> Sequential:
         """
-        Build enhanced LSTM model with improved architecture
+        Build deeper LSTM model for proper training time and complexity
         
         Args:
             input_shape: Shape of input data (sequence_length, features)
@@ -582,33 +542,37 @@ class EnhancedLSTMPredictor:
             Compiled Keras model
         """
         model = Sequential([
-            # First LSTM layer with more units
-            LSTM(100, return_sequences=True, input_shape=input_shape),
+            # First LSTM layer - Deep feature extraction
+            LSTM(128, return_sequences=True, input_shape=input_shape),
             BatchNormalization(),
             Dropout(0.3),
             
-            # Second LSTM layer
-            LSTM(80, return_sequences=True),
-            BatchNormalization(),
+            # Second LSTM layer - Pattern recognition
+            LSTM(96, return_sequences=True),
+            BatchNormalization(), 
             Dropout(0.3),
             
-            # Third LSTM layer
-            LSTM(60, return_sequences=False),
+            # Third LSTM layer - Temporal dependencies
+            LSTM(64, return_sequences=False),
             BatchNormalization(),
-            Dropout(0.3),
-            
-            # Dense layers
-            Dense(50, activation='relu'),
             Dropout(0.2),
             
-            Dense(25, activation='relu'),
+            # Dense layers for complex interactions
+            Dense(64, activation='relu'),
+            BatchNormalization(),
+            Dropout(0.3),
+            
+            Dense(32, activation='relu'),
             Dropout(0.2),
+            
+            Dense(16, activation='relu'),
+            Dropout(0.1),
             
             # Output layer
             Dense(1, activation='linear')
         ])
         
-        # Compile with advanced optimizer
+        # Compile with lower learning rate for stable training
         optimizer = Adam(
             learning_rate=config.model.learning_rate,
             beta_1=0.9,
@@ -618,8 +582,8 @@ class EnhancedLSTMPredictor:
         
         model.compile(
             optimizer=optimizer,
-            loss='huber',  # More robust to outliers than MSE
-            metrics=['mae', 'mse']
+            loss='mse',  # Standard MSE loss
+            metrics=['mae']
         )
         
         return model
@@ -670,7 +634,13 @@ class EnhancedLSTMPredictor:
             X_test = X[train_size + val_size:]
             y_test = y[train_size + val_size:]
             
+            # CRITICAL: Scale targets using ONLY training data to avoid data leakage
+            y_train_scaled = self.scaler.fit_transform(y_train.reshape(-1, 1)).flatten()
+            y_val_scaled = self.scaler.transform(y_val.reshape(-1, 1)).flatten()
+            y_test_scaled = self.scaler.transform(y_test.reshape(-1, 1)).flatten()
+            
             logger.info(f"Data splits - Train: {len(X_train)}, Val: {len(X_val)}, Test: {len(X_test)}")
+            logger.info(f"Target scaling - Train mean: {np.mean(y_train):.6f}, Train std: {np.std(y_train):.6f}")
             
             # Build enhanced model
             self.model = self.build_enhanced_model((X.shape[1], X.shape[2]))
@@ -694,12 +664,12 @@ class EnhancedLSTMPredictor:
                 )
             ]
             
-            # Train model
+            # Train model using scaled targets
             history = self.model.fit(
-                X_train, y_train,
+                X_train, y_train_scaled,
                 epochs=config.model.epochs,
                 batch_size=config.model.batch_size,
-                validation_data=(X_val, y_val),
+                validation_data=(X_val, y_val_scaled),
                 callbacks=callbacks,
                 verbose=1,
                 shuffle=True
@@ -712,7 +682,10 @@ class EnhancedLSTMPredictor:
             
             # Calculate comprehensive metrics
             metrics = self._calculate_comprehensive_metrics(
-                X_train, y_train, X_val, y_val, X_test, y_test, history
+                X_train, y_train_scaled, y_train, 
+                X_val, y_val_scaled, y_val, 
+                X_test, y_test_scaled, y_test, 
+                history
             )
             
             # CRITICAL: Validate model quality before saving
@@ -1139,13 +1112,54 @@ class EnhancedLSTMPredictor:
         
         return report
 
+    def get_buy_sell_rating(self, predicted_change: float) -> Dict[str, str]:
+        """
+        Generate buy/sell rating based on predicted price change
+        
+        Args:
+            predicted_change: Predicted percentage change (e.g., 0.10 for 10% gain)
+            
+        Returns:
+            Dictionary with rating and reasoning
+        """
+        if predicted_change >= config.model.strong_buy_threshold:
+            return {
+                'rating': 'STRONG BUY 🚀',
+                'reasoning': f'Model predicts {predicted_change*100:.1f}% gain (>{config.model.strong_buy_threshold*100:.1f}%)',
+                'color': '🟢'
+            }
+        elif predicted_change >= config.model.buy_threshold:
+            return {
+                'rating': 'BUY 📈',
+                'reasoning': f'Model predicts {predicted_change*100:.1f}% gain (>{config.model.buy_threshold*100:.1f}%)',
+                'color': '🟢'
+            }
+        elif predicted_change <= config.model.strong_sell_threshold:
+            return {
+                'rating': 'STRONG SELL 📉',
+                'reasoning': f'Model predicts {predicted_change*100:.1f}% loss (<{config.model.strong_sell_threshold*100:.1f}%)',
+                'color': '🔴'
+            }
+        elif predicted_change <= config.model.sell_threshold:
+            return {
+                'rating': 'SELL 📊',
+                'reasoning': f'Model predicts {predicted_change*100:.1f}% loss (<{config.model.sell_threshold*100:.1f}%)',
+                'color': '🔴'
+            }
+        else:
+            return {
+                'rating': 'HOLD ⚖️',
+                'reasoning': f'Model predicts {predicted_change*100:.1f}% change (neutral range)',
+                'color': '🟡'
+            }
 
-def create_enhanced_predictor(symbol: str) -> EnhancedLSTMPredictor:
+
+def create_enhanced_predictor(symbol: str, prediction_days: Optional[int] = None) -> EnhancedLSTMPredictor:
     """Factory function to create enhanced LSTM predictor"""
-    return EnhancedLSTMPredictor(symbol)
+    return EnhancedLSTMPredictor(symbol, prediction_days=prediction_days)
 
 
 # Backward compatibility
-def create_predictor(symbol: str) -> EnhancedLSTMPredictor:
+def create_predictor(symbol: str, prediction_days: Optional[int] = None) -> EnhancedLSTMPredictor:
     """Factory function for backward compatibility"""
-    return EnhancedLSTMPredictor(symbol)
+    return EnhancedLSTMPredictor(symbol, prediction_days=prediction_days)

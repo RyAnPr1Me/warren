@@ -98,8 +98,9 @@ Examples:
         # Predict command
         predict_parser = subparsers.add_parser('predict', help='AI-powered stock price prediction')
         predict_parser.add_argument('symbol', help='Stock ticker symbol')
-        predict_parser.add_argument('--days', type=int, default=60, help='Days to predict ahead')
+        predict_parser.add_argument('--days', type=int, default=15, help='Days to predict ahead (default: 15 = 3 weeks)')
         predict_parser.add_argument('--save-report', action='store_true', help='Save detailed prediction report')
+        predict_parser.add_argument('--rating', action='store_true', help='Include buy/sell rating')
         
         # AI Recommend command (new Phase 2 feature)
         ai_recommend_parser = subparsers.add_parser('ai-recommend', help='AI-powered buy/sell recommendation')
@@ -282,9 +283,10 @@ Examples:
         
         print(f"\n🧠 Training Enhanced LSTM model for {symbol}...")
         print(f"📊 Using {period} of historical data")
+        print(f"🎯 Training for 3-week (15 day) predictions")
         
         try:
-            # Create predictor
+            # Create predictor with default 15-day prediction
             predictor = create_enhanced_predictor(symbol)
             
             # Check if model already exists (but still allow retraining since we have quality validation now)
@@ -347,12 +349,13 @@ Examples:
         """Handle AI price prediction command"""
         symbol = args.symbol.upper()
         days = args.days
+        show_rating = getattr(args, 'rating', False)
         
         print(f"\n🔮 AI Price Prediction for {symbol}")
-        print(f"📅 Forecasting {days} days ahead...")
+        print(f"📅 Forecasting {days} days ahead ({days//5:.1f} weeks)...")
         
         try:
-            # Create predictor
+            # Create predictor (always use model trained for default horizon)
             predictor = create_enhanced_predictor(symbol)
             
             # Check if model exists
@@ -361,7 +364,7 @@ Examples:
                 print(f"💡 Train a model first: python cli.py train {symbol}")
                 return
             
-            # Make prediction
+            # Make prediction for requested time horizon
             prediction = predictor.predict_price(days)
             
             print(f"\n📊 AI Prediction Results:")
@@ -370,10 +373,17 @@ Examples:
             print(f"   Expected Change: {format_percentage(prediction['percent_change'])}")
             print(f"   Confidence: {prediction['confidence_score']['score']}")
             
+            # Show buy/sell rating if requested (or always show for better UX)
+            if show_rating or True:  # Always show rating for better UX
+                rating = predictor.get_buy_sell_rating(prediction['percent_change'])
+                print(f"\n💡 Investment Rating: {rating['color']} {rating['rating']}")
+                print(f"   {rating['reasoning']}")
+            
             # Show confidence intervals if available
             if 'confidence_intervals' in prediction and prediction['confidence_intervals']:
                 last_ci = prediction['confidence_intervals'][-1]
-                print(f"   95% Confidence Range: {format_currency(last_ci['lower'])} - {format_currency(last_ci['upper'])}")
+                print(f"\n📈 Confidence Range:")
+                print(f"   95% Range: {format_currency(last_ci['lower'])} - {format_currency(last_ci['upper'])}")
             
             # Model performance
             if 'model_performance' in prediction:
