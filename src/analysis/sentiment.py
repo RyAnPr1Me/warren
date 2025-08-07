@@ -153,13 +153,25 @@ class NewsCollector:
                 'limit': 50
             }
             
+            logger.info(f"Fetching news sentiment from Alpha Vantage for {symbol}")
             response = requests.get(url, params=params, timeout=10)
             data = response.json()
             
+            # DEBUG: Log the response to understand what's being returned
+            logger.info(f"Alpha Vantage response keys: {list(data.keys()) if isinstance(data, dict) else 'Not a dict'}")
+            
             if 'feed' in data:
+                logger.info(f"Found {len(data['feed'])} news items")
                 return self._process_news_data(data['feed'], symbol)
             else:
-                logger.warning(f"No news data returned for {symbol}")
+                logger.warning(f"No 'feed' key in Alpha Vantage response for {symbol}")
+                if 'Error Message' in data:
+                    logger.error(f"Alpha Vantage API Error: {data['Error Message']}")
+                elif 'Note' in data:
+                    logger.warning(f"Alpha Vantage API Note: {data['Note']}")
+                else:
+                    logger.warning(f"Unexpected response structure: {data}")
+                
                 # Try alternative sources
                 return self._get_alternative_news_sentiment(symbol)
                 
@@ -287,20 +299,25 @@ class NewsCollector:
     def _get_alternative_news_sentiment(self, symbol: str) -> Dict:
         """Get news sentiment using yfinance and other free sources"""
         try:
+            logger.info(f"Trying alternative news sources for {symbol}")
             # Use yfinance to get news
             ticker = yf.Ticker(symbol)
             news = ticker.news
             
+            logger.info(f"yfinance returned {len(news) if news else 0} news items for {symbol}")
+            
             if not news:
-                logger.warning(f"No news found for {symbol}")
+                logger.warning(f"No news found for {symbol} in yfinance either")
                 return self._get_minimal_sentiment()
             
             # Analyze sentiment using TextBlob
             news_items = []
-            for item in news[:20]:  # Limit to recent 20 items
+            for i, item in enumerate(news[:20]):  # Limit to recent 20 items
                 try:
                     title = item.get('title', '')
                     summary = item.get('summary', item.get('description', ''))
+                    
+                    logger.debug(f"Processing news item {i+1}: {title[:50]}...")
                     
                     # Combine title and summary for sentiment analysis
                     text = f"{title}. {summary}"

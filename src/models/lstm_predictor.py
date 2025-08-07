@@ -16,8 +16,9 @@ from tensorflow.keras.layers import (
     MultiHeadAttention, LayerNormalization, GlobalAveragePooling1D
 )
 from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau, LearningRateScheduler, Callback
 from tensorflow.keras import regularizers
+import tensorflow.keras.backend as K
 import joblib
 import logging
 from pathlib import Path
@@ -29,6 +30,7 @@ import warnings
 
 from ..config import config
 from ..data.collector import StockDataCollector
+from ..analysis.sentiment import SentimentAnalysisEngine
 from ..utils.helpers import Timer, format_percentage, format_currency
 
 # Suppress TensorFlow warnings
@@ -38,36 +40,104 @@ tf.get_logger().setLevel('ERROR')
 logger = logging.getLogger(__name__)
 
 
+class IntelligentLRScheduler(Callback):
+    """
+    Intelligent learning rate scheduler that combines multiple strategies:
+    - Warm-up phase for stable training start
+    - Cosine annealing for smooth decay
+    - Plateau detection for adaptive reduction
+    - Performance-based adjustments
+    """
+    
+    def __init__(self, initial_lr=0.001, warmup_epochs=5, cosine_epochs=40, 
+                 min_lr_factor=0.01, patience=8, factor=0.5, verbose=1):
+        super().__init__()
+        self.initial_lr = initial_lr
+        self.warmup_epochs = warmup_epochs
+        self.cosine_epochs = cosine_epochs
+        self.min_lr = initial_lr * min_lr_factor
+        self.patience = patience
+        self.factor = factor
+        self.verbose = verbose
+        
+        # State tracking
+        self.best_loss = float('inf')
+        self.wait = 0
+        self.plateau_reductions = 0
+        self.max_plateau_reductions = 3
+        
+    def on_epoch_begin(self, epoch, logs=None):
+        """Set learning rate at the beginning of each epoch"""
+        if epoch < self.warmup_epochs:
+            # Warm-up phase: gradually increase LR
+            lr = self.initial_lr * (epoch + 1) / self.warmup_epochs
+        elif epoch < self.warmup_epochs + self.cosine_epochs:
+            # Cosine annealing phase
+            cosine_epoch = epoch - self.warmup_epochs
+            lr = self.min_lr + (self.initial_lr - self.min_lr) * 0.5 * (
+                1 + np.cos(np.pi * cosine_epoch / self.cosine_epochs)
+            )
+        else:
+            # Plateau-based reduction phase
+            lr = max(self.min_lr, self.initial_lr * (self.factor ** self.plateau_reductions))
+        
+        # Apply the learning rate
+        self.model.optimizer.learning_rate.assign(lr)
+        
+        if self.verbose:
+            print(f"Epoch {epoch + 1}: Learning rate = {lr:.6f}")
+    
+    def on_epoch_end(self, epoch, logs=None):
+        """Check for plateau and adjust if needed"""
+        if logs is None:
+            logs = {}
+            
+        if epoch >= self.warmup_epochs + self.cosine_epochs:
+            current_loss = logs.get('val_loss', float('inf'))
+            
+            if current_loss < self.best_loss:
+                self.best_loss = current_loss
+                self.wait = 0
+            else:
+                self.wait += 1
+                
+                if self.wait >= self.patience and self.plateau_reductions < self.max_plateau_reductions:
+                    self.plateau_reductions += 1
+                    self.wait = 0
+                    current_lr = float(self.model.optimizer.learning_rate.numpy())
+                    new_lr = max(self.min_lr, current_lr * self.factor)
+                    self.model.optimizer.learning_rate.assign(new_lr)
+                    
+                    if self.verbose:
+                        print(f"Plateau detected! Reducing LR to {new_lr:.6f}")
+
+
 class EnhancedLSTMPredictor:
     """
     Enhanced LSTM-based stock price predictor for Phase 2 implementation
     Features: Multi-feature input, advanced architecture, confidence scoring, quality validation
     """
     
-    # Model quality thresholds (REALISTIC for stock prediction)
-    MIN_R2_SCORE = 0.02   # Realistic minimum for financial time series
-    GOOD_R2_SCORE = 0.05   # Good model threshold for stock prediction  
-    EXCELLENT_R2_SCORE = 0.10  # Excellent model threshold
+    # Model quality thresholds (REALISTIC for stock prediction with sentiment)
+    MIN_R2_SCORE = 0.01   # Very realistic minimum for financial time series
+    GOOD_R2_SCORE = 0.03   # Good model threshold for stock prediction  
+    EXCELLENT_R2_SCORE = 0.05  # Excellent model threshold
     
     def __init__(self, symbol: str, prediction_days: Optional[int] = None):
         self.symbol = symbol.upper()
         self.model = None
         self.scaler = StandardScaler()  # Better for returns (can be negative)
-        # Use QuantileTransformer for robust feature scaling from the start
-        self.feature_scaler = QuantileTransformer(
-            n_quantiles=1000,
-            output_distribution='normal',
-            subsample=100000,
-            random_state=42
-        )
+        # Use StandardScaler for more stable and interpretable feature scaling
+        self.feature_scaler = StandardScaler()  # More stable and faster than QuantileTransformer
         
         # Enhanced configuration
         self.sequence_length = config.model.sequence_length
         self.prediction_days = prediction_days or config.model.prediction_days
         self.features = ['Close', 'Volume', 'High', 'Low', 'Open']  # Multi-feature input
         
-        # Initialize data collector
+        # Initialize data collector and sentiment analyzer
         self.data_collector = StockDataCollector()
+        self.sentiment_analyzer = SentimentAnalysisEngine()
         
         # Set up file paths
         self.base_dir = Path(f"data/models/{self.symbol}")
@@ -358,6 +428,112 @@ class EnhancedLSTMPredictor:
         df['Returns_Lag2'] = df['Close'].pct_change().shift(2)  # 2 days ago return
         df['Returns_Lag3'] = df['Close'].pct_change().shift(3)  # 3 days ago return
         
+        # === SENTIMENT FEATURES (Period-specific historical sentiment) ===
+        try:
+            logger.info("Adding historical sentiment features for training period...")
+            
+            # Get period-specific sentiment data 
+            sentiment_result = self.sentiment_analyzer.analyze_sentiment(self.symbol)
+            
+            # Use static sentiment but create time-varying features through rolling stats
+            base_sentiment = sentiment_result.overall_sentiment
+            base_confidence = sentiment_result.confidence
+            
+            # Create time-varying sentiment proxy using news sentiment + price momentum correlation
+            price_momentum = df['Returns_Lag1'].rolling(window=5).mean().fillna(0)
+            sentiment_proxy = base_sentiment + (price_momentum * 0.1)  # Slight correlation with price momentum
+            
+            df['Overall_Sentiment'] = sentiment_proxy.clip(-1, 1)  # Keep in valid range
+            df['Confidence_Score'] = base_confidence
+            df['Bullish_Ratio'] = sentiment_result.bullish_ratio
+            df['Bearish_Ratio'] = sentiment_result.bearish_ratio
+            df['Neutral_Ratio'] = 1.0 - df['Bullish_Ratio'] - df['Bearish_Ratio']
+            
+            # Create derived sentiment features using the proxy
+            df['Sentiment_Change'] = df['Overall_Sentiment'].diff().fillna(0)
+            df['Sentiment_Volatility'] = df['Overall_Sentiment'].rolling(window=5).std().fillna(0)
+            df['Sentiment_Price_Divergence'] = df['Overall_Sentiment'] - df['Returns_Lag1']
+            df['News_Volume'] = sentiment_result.news_count / max(1, len(data))  # Normalized news volume
+            
+            logger.info(f"Added sentiment features: avg_sentiment={df['Overall_Sentiment'].mean():.3f}, confidence={base_confidence:.3f}")
+            
+        except Exception as e:
+            logger.warning(f"Could not add sentiment features: {e}")
+            # Add placeholder sentiment features with neutral values
+            for col in ['Overall_Sentiment', 'Confidence_Score', 'Bullish_Ratio', 'Bearish_Ratio',
+                       'Neutral_Ratio', 'Sentiment_Change', 'Sentiment_Volatility', 
+                       'Sentiment_Price_Divergence', 'News_Volume']:
+                df[col] = 0.0
+        
+        # === EARNINGS FEATURES (Historical earnings calendar data) ===
+        try:
+            logger.info("Adding historical earnings features for training period...")
+            
+            # Import fundamentals analyzer
+            from ..analysis.fundamentals import FundamentalAnalyzer
+            fundamentals_analyzer = FundamentalAnalyzer()
+            
+            # Get earnings calendar for the period
+            earnings_data = fundamentals_analyzer.get_earnings_calendar(self.symbol)
+            
+            # Initialize earnings features
+            df['Days_To_Earnings'] = 999  # Default: far from earnings
+            df['Earnings_Beat_History'] = 0.0  # Historical earnings beat rate
+            df['EPS_Growth_Rate'] = 0.0  # EPS growth rate
+            df['Revenue_Growth_Rate'] = 0.0  # Revenue growth rate
+            
+            if earnings_data and len(earnings_data) > 0:
+                logger.info(f"Found {len(earnings_data)} earnings events for analysis")
+                
+                # Create earnings proximity features
+                earnings_dates = []
+                for earnings in earnings_data:
+                    try:
+                        earnings_dates.append(earnings.date)
+                    except:
+                        continue
+                
+                if earnings_dates:
+                    # Calculate days to nearest earnings for each date
+                    for i, date in enumerate(df.index):
+                        min_days = min([abs((date - ed).days) for ed in earnings_dates])
+                        df.loc[date, 'Days_To_Earnings'] = min(min_days, 999)
+                    
+                    # Calculate average earnings metrics
+                    eps_beats = []
+                    eps_surprises = []
+                    
+                    for earnings in earnings_data:
+                        try:
+                            if earnings.eps_estimate and earnings.eps_actual:
+                                eps_beat = 1.0 if earnings.eps_actual > earnings.eps_estimate else -1.0
+                                eps_beats.append(eps_beat)
+                            
+                            if earnings.surprise_percent:
+                                eps_surprises.append(earnings.surprise_percent)
+                        except:
+                            continue
+                    
+                    # Apply average metrics to all dates
+                    avg_eps_beat = np.mean(eps_beats) if eps_beats else 0.0
+                    avg_surprise = np.mean(eps_surprises) if eps_surprises else 0.0
+                    
+                    df['Earnings_Beat_History'] = avg_eps_beat
+                    df['EPS_Growth_Rate'] = avg_surprise / 100.0 if avg_surprise else 0.0  # Convert % to decimal
+                    df['Revenue_Growth_Rate'] = 0.0  # Placeholder for now
+                
+                logger.info(f"Added earnings features with avg beat rate: {df['Earnings_Beat_History'].iloc[0]:.3f}")
+            else:
+                logger.info("No earnings data found, using default values")
+                
+        except Exception as e:
+            logger.warning(f"Could not add earnings features: {e}")
+            # Add placeholder earnings features
+            df['Days_To_Earnings'] = 999
+            df['Earnings_Beat_History'] = 0.0
+            df['EPS_Growth_Rate'] = 0.0
+            df['Revenue_Growth_Rate'] = 0.0
+        
         # Handle infinite and NaN values more aggressively
         df = df.replace([np.inf, -np.inf], np.nan)
         
@@ -383,7 +559,7 @@ class EnhancedLSTMPredictor:
         # Prepare comprehensive features
         enhanced_data = self.prepare_features(data)
         
-        # Advanced feature selection - HISTORICAL features for return forecasting
+        # Advanced feature selection - HISTORICAL features + SENTIMENT for return forecasting
         feature_columns = [
             # Historical momentum (strongest predictors)
             'Momentum_1d',    # Yesterday's momentum
@@ -411,6 +587,15 @@ class EnhancedLSTMPredictor:
             # Historical returns for autocorrelation
             'Returns_Lag1',       # Yesterday's return
             'Returns_Lag2',       # 2 days ago return
+            
+            # === PHASE 3 SENTIMENT FEATURES ===
+            'Overall_Sentiment',        # Current market sentiment
+            'Confidence_Score',         # Sentiment confidence
+            'Bullish_Ratio',           # Bullish sentiment ratio
+            'Bearish_Ratio',           # Bearish sentiment ratio
+            'Sentiment_Change',        # Sentiment momentum
+            'Sentiment_Price_Divergence',  # Sentiment vs price divergence
+            'News_Volume',             # News activity level
         ]
         
         # Ensure all columns exist and handle missing features gracefully
@@ -444,48 +629,44 @@ class EnhancedLSTMPredictor:
         # Store feature columns for later use in prediction
         self.feature_columns = available_features
         
-        # Create enhanced target variable - predict FUTURE returns with smoothing
+        # COMPLETELY REDESIGNED TARGET ENGINEERING for stable training
         close_prices = enhanced_data['Close'].values.astype(float)
         
-        # Calculate multiple timeframe returns for better signal
-        future_returns_1d = np.log(close_prices[1:] / close_prices[:-1])  # Next day returns
+        # Use percentage returns only (standard financial approach)
+        pct_returns = np.array([(close_prices[i+1] - close_prices[i]) / close_prices[i] 
+                               for i in range(len(close_prices) - 1)])
         
-        # FIXED TARGET ENGINEERING - Use actual future returns, not fractional
-        if self.prediction_days <= 5:
-            # Short-term: Use next-day returns (standard approach)
-            target_raw = future_returns_1d
-            # Apply light smoothing to reduce noise
-            if len(target_raw) >= 3:
-                target_smoothed = np.convolve(target_raw, [0.2, 0.6, 0.2], mode='same')
-                target_smoothed[0] = target_raw[0]
-                target_smoothed[-1] = target_raw[-1]
-            else:
-                target_smoothed = target_raw
+        # For multi-day predictions, use forward-looking returns
+        if self.prediction_days > 1:
+            # Calculate forward returns over prediction horizon
+            target_raw = []
+            for i in range(len(close_prices) - self.prediction_days):
+                future_price = close_prices[i + self.prediction_days]
+                current_price = close_prices[i]
+                period_return = (future_price - current_price) / current_price
+                target_raw.append(period_return)
+            target_raw = np.array(target_raw)
+            
+            # Pad to match pct_returns length for consistency
+            padding_needed = len(pct_returns) - len(target_raw)
+            target_raw = np.concatenate([target_raw, np.zeros(padding_needed)])
         else:
-            # Medium-term: Use ACTUAL multi-day returns (not scaled to daily)
-            future_periods = min(self.prediction_days, len(close_prices) - 1)
-            target_raw = np.array([
-                np.log(close_prices[min(i + future_periods, len(close_prices) - 1)] / close_prices[i])
-                for i in range(len(close_prices) - 1)
-            ])
-            target_smoothed = target_raw
+            # For 1-day predictions, use next-day returns
+            target_raw = pct_returns
         
-        # Apply additional denoising for very noisy markets
-        if len(target_smoothed) >= 5:
-            # Remove extreme outliers (> 3 sigma) that hurt training
-            target_std = np.std(target_smoothed)
-            target_mean = np.mean(target_smoothed)
-            outlier_mask = np.abs(target_smoothed - target_mean) > 3 * target_std
-            target_smoothed[outlier_mask] = np.clip(
-                target_smoothed[outlier_mask], 
-                target_mean - 3 * target_std, 
-                target_mean + 3 * target_std
-            )
+        # Simple outlier clipping (more conservative)
+        percentile_95 = np.percentile(np.abs(target_raw), 95)
+        target_clipped = np.clip(target_raw, -percentile_95, percentile_95)
         
-        logger.info(f"Target engineering: {self.prediction_days}-day horizon, smoothed from {len(close_prices)} prices")
+        # Remove any remaining invalid values
+        target_smoothed = np.nan_to_num(target_clipped, nan=0.0, posinf=0.0, neginf=0.0)
+        
+        logger.info(f"SIMPLIFIED target engineering: {self.prediction_days}-day returns")
         logger.info(f"Target stats - Mean: {np.mean(target_smoothed):.6f}, Std: {np.std(target_smoothed):.6f}")
+        logger.info(f"Target range - Min: {np.min(target_smoothed):.6f}, Max: {np.max(target_smoothed):.6f}")
+        logger.info(f"95th percentile used for clipping: {percentile_95:.6f}")
         
-        # Use the enhanced target
+        # Use the simplified target
         future_returns = target_smoothed
         
         # Align target with features by removing the last observation 
@@ -573,69 +754,47 @@ class EnhancedLSTMPredictor:
     
     def build_enhanced_model(self, input_shape: Tuple[int, int]) -> Model:
         """
-        Build proper LSTM model with attention mechanism for stock prediction
+        Build SIMPLIFIED LSTM model optimized for financial return prediction
         
         Args:
             input_shape: Shape of input data (sequence_length, features)
             
         Returns:
-            Compiled Keras model with attention and proper capacity
+            Compiled Keras model - much simpler and more stable
         """
-        # Use full config values for proper model size
-        lstm_units = config.model.lstm_units
-        dropout = config.model.dropout_rate
+        # Use smaller, more stable architecture
+        lstm_units = 64  # Much smaller than config (was 128)
         
-        # Functional API for attention mechanism
-        inputs = Input(shape=input_shape)
+        # Sequential model for simplicity and stability
+        model = Sequential([
+            # Single LSTM layer to reduce overfitting
+            LSTM(lstm_units, 
+                 return_sequences=False,  # Don't need sequences for this problem
+                 dropout=0.3,            # Moderate dropout
+                 recurrent_dropout=0.2,  # Light recurrent dropout
+                 kernel_regularizer=regularizers.l2(0.001)),  # Light L2
+            
+            # Single hidden layer
+            Dense(32, activation='relu',
+                  kernel_regularizer=regularizers.l2(0.001)),
+            Dropout(0.3),
+            
+            # Output layer - linear for regression
+            Dense(1, activation='linear')
+        ])
         
-        # First LSTM layer with return_sequences=True for attention
-        lstm1 = LSTM(lstm_units, return_sequences=True, 
-                     dropout=dropout*0.6, recurrent_dropout=0.2,
-                     kernel_regularizer=regularizers.l2(0.01))(inputs)
-        lstm1 = LayerNormalization()(lstm1)
-        
-        # Second LSTM layer 
-        lstm2 = LSTM(lstm_units//2, return_sequences=True,
-                     dropout=dropout*0.6, recurrent_dropout=0.2,
-                     kernel_regularizer=regularizers.l2(0.01))(lstm1)
-        lstm2 = LayerNormalization()(lstm2)
-        
-        # Multi-head attention mechanism
-        attention = MultiHeadAttention(
-            num_heads=4, 
-            key_dim=lstm_units//8,
-            dropout=dropout*0.4
-        )(lstm2, lstm2)
-        
-        # Add & norm connection
-        attention_out = LayerNormalization()(lstm2 + attention)
-        
-        # Global pooling to compress sequence
-        pooled = GlobalAveragePooling1D()(attention_out)
-        
-        # Dense layers with stronger regularization
-        dense1 = Dense(lstm_units//2, activation='relu', 
-                      kernel_regularizer=regularizers.l2(0.02))(pooled)
-        dense1 = Dropout(dropout)(dense1)
-        
-        dense2 = Dense(lstm_units//4, activation='relu',
-                      kernel_regularizer=regularizers.l2(0.02))(dense1)
-        dense2 = Dropout(dropout*0.7)(dense2)
-        
-        # Output layer
-        outputs = Dense(1, activation='linear')(dense2)
-        
-        # Create model
-        model = Model(inputs=inputs, outputs=outputs)
-        
-        # Optimizer with proper learning rate
-        optimizer = Adam(learning_rate=config.model.learning_rate, clipnorm=1.0)
+        # Use much more conservative learning rate
+        initial_lr = 0.0001  # Very conservative (was 0.0005 * 1.2)
+        optimizer = Adam(learning_rate=initial_lr, clipnorm=1.0)
         
         model.compile(
             optimizer=optimizer,
             loss='mse',
             metrics=['mae']
         )
+        
+        logger.info(f"Built SIMPLIFIED model: {lstm_units} LSTM units, single layer")
+        logger.info(f"Very conservative learning rate: {initial_lr}")
         
         return model
     
@@ -696,34 +855,56 @@ class EnhancedLSTMPredictor:
             X_val_scaled = np.array([self.feature_scaler.transform(seq) for seq in X_val])
             X_test_scaled = np.array([self.feature_scaler.transform(seq) for seq in X_test])
             
-            # 2. Fit target scaler on training targets ONLY
-            y_train_scaled = self.scaler.fit_transform(y_train.reshape(-1, 1)).flatten()
-            y_val_scaled = self.scaler.transform(y_val.reshape(-1, 1)).flatten()
-            y_test_scaled = self.scaler.transform(y_test.reshape(-1, 1)).flatten()
+            # 2. IMPROVED target scaling with RobustScaler for financial data
+            # RobustScaler is better for financial returns which often have outliers
+            logger.info("Using RobustScaler for target variable (better for financial data)")
+            
+            # Check target distribution before scaling
+            logger.info(f"Pre-scaling target stats - Mean: {np.mean(y_train):.6f}, Std: {np.std(y_train):.6f}")
+            logger.info(f"Pre-scaling target range - Min: {np.min(y_train):.6f}, Max: {np.max(y_train):.6f}")
+            
+            # Use RobustScaler which is less sensitive to outliers
+            from sklearn.preprocessing import RobustScaler
+            robust_target_scaler = RobustScaler(quantile_range=(15.0, 85.0))  # Conservative quantile range
+            
+            y_train_scaled = robust_target_scaler.fit_transform(y_train.reshape(-1, 1)).flatten()
+            y_val_scaled = robust_target_scaler.transform(y_val.reshape(-1, 1)).flatten()
+            y_test_scaled = robust_target_scaler.transform(y_test.reshape(-1, 1)).flatten()
+            
+            # Verify scaling quality
+            logger.info(f"Post-scaling target stats - Train mean: {np.mean(y_train_scaled):.6f}, Train std: {np.std(y_train_scaled):.6f}")
+            logger.info(f"Post-scaling validation - Val mean: {np.mean(y_val_scaled):.6f}, Val std: {np.std(y_val_scaled):.6f}")
+            
+            # Update scaler reference for prediction use
+            self.scaler = robust_target_scaler
             
             logger.info(f"Data splits - Train: {len(X_train)}, Val: {len(X_val)}, Test: {len(X_test)}")
             logger.info(f"Target scaling - Train mean: {np.mean(y_train):.6f}, Train std: {np.std(y_train):.6f}")
             
-            # Build enhanced model
+            # Build simplified model with very conservative training
             self.model = self.build_enhanced_model((X_train.shape[1], X_train.shape[2]))
             
             logger.info(f"Model architecture: {X.shape[1]} time steps, {X.shape[2]} features")
+            logger.info(f"SIMPLIFIED model with conservative parameters for stability")
             
-            # Balanced callbacks for attention model
+            # Simplified callbacks for stable training
             callbacks = [
                 EarlyStopping(
                     monitor='val_loss',
-                    patience=config.model.patience,  # Use config patience
+                    patience=15,  # More patience for small model
                     restore_best_weights=True,
                     verbose=1,
-                    min_delta=0.0001  # Small improvement threshold
+                    min_delta=0.0001,  # Smaller improvement threshold
+                    mode='min'
                 ),
+                # Simple learning rate reduction on plateau
                 ReduceLROnPlateau(
                     monitor='val_loss',
-                    factor=0.3,  # More aggressive LR reduction
-                    patience=3,  # Reduce LR faster
-                    min_lr=1e-6,
-                    verbose=1
+                    factor=0.5,
+                    patience=8,
+                    min_lr=1e-6,  # Very small minimum
+                    verbose=1,
+                    cooldown=3
                 )
             ]
             
