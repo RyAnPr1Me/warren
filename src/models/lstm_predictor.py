@@ -1286,113 +1286,148 @@ class EnhancedLSTMPredictor:
         Returns:
             Tuple of (X, y) with unscaled features and targets - scaling done later in training
         """
-        # Prepare comprehensive features
-        enhanced_data = self.prepare_features(data)
+        # First apply comprehensive advanced feature engineering
+        try:
+            from .advanced_features import enhance_features_for_r2_improvement
+            logger.info("🚀 Applying ADVANCED feature engineering for R² improvement...")
+            enhanced_data = enhance_features_for_r2_improvement(data, 'Close')
+            logger.info(f"✨ Advanced features generated: {len(enhanced_data.columns)} total features")
+        except Exception as e:
+            logger.warning(f"Advanced feature engineering failed: {e}, using standard features")
+            # Fallback to standard features
+            enhanced_data = self.prepare_features(data)
         
-        # COMPREHENSIVE feature selection - Maximum features for 80%+ accuracy target
-        feature_columns = [
+        # ADAPTIVE FEATURE SELECTION - Use all quality features for maximum R² improvement
+        core_features = [
             # === CORE MOMENTUM FEATURES (temporal accuracy critical) ===
-            'Momentum_1d',        # Daily momentum - critical for next-day prediction
-            'Momentum_3d',        # 3-day momentum - short-term trend
-            'Momentum_5d',        # 5-day momentum - medium-term trend
-            'Momentum_Quality',   # Quality of momentum signals
-            'Momentum_Strength',  # Absolute momentum strength
-            'Momentum_Consistency', # Multi-timeframe momentum alignment
+            'Momentum_1d', 'Momentum_3d', 'Momentum_5d', 'Momentum_Quality',
+            'Momentum_Strength', 'Momentum_Consistency',
             
             # === ADVANCED VOLATILITY FEATURES (market regime detection) ===
-            'Volatility_5d',      # Recent volatility
-            'Volatility_20d',     # Longer-term volatility
-            'Vol_Regime',         # Volatility regime score
-            'Vol_Ratio',          # Volatility regime change
-            'Vol_Persistence',    # Volatility clustering
-            'Vol_Breakout',       # Volatility breakout signals
-            'HL_Volatility',      # High-Low volatility
+            'Volatility_5d', 'Volatility_20d', 'Vol_Regime', 'Vol_Ratio',
+            'Vol_Persistence', 'Vol_Breakout', 'HL_Volatility',
             
             # === MEAN REVERSION SIGNALS (multiple timeframes) ===
-            'Mean_Reversion_5d',  # Short-term mean reversion signal
-            'Mean_Reversion_20d', # Long-term mean reversion signal
-            'Reversion_Divergence', # Mean reversion divergence
-            'Distance_From_SMA20', # Distance from moving average
-            'Mean_Reversion_Signal', # Bounded mean reversion
+            'Mean_Reversion_5d', 'Mean_Reversion_20d', 'Reversion_Divergence',
+            'Distance_From_SMA20', 'Mean_Reversion_Signal',
             
             # === TECHNICAL INDICATORS (proven predictors) ===
-            'Price_SMA5_Ratio',   # Short-term trend position
-            'Price_SMA20_Ratio',  # Long-term trend position
-            'SMA_Cross',          # Moving average crossover
-            'RSI_Normalized',     # Momentum oscillator
-            'MACD_Histogram',     # Trend convergence/divergence
-            'BB_Position',        # Bollinger Band position
+            'Price_SMA5_Ratio', 'Price_SMA20_Ratio', 'SMA_Cross',
+            'RSI_Normalized', 'MACD_Histogram', 'BB_Position',
             
             # === HISTORICAL PATTERNS (multiple lags) ===
-            'Returns_Lag1',       # Previous day return
-            'Returns_Lag2',       # 2 days ago return
-            'Returns_Lag3',       # 3 days ago return
-            'Price_Acceleration', # Price acceleration (2nd derivative)
+            'Returns_Lag1', 'Returns_Lag2', 'Returns_Lag3', 'Price_Acceleration',
             
             # === VOLUME FEATURES (market participation) ===
-            'Volume_Ratio',       # Volume surge detection
-            'Volume_Price_Trend', # Volume-price alignment
-            'Volume_Breakout',    # Volume breakout signals
-            'Price_Volume',       # Price-volume interaction
-            'VPT_Normalized',     # Volume Price Trend
-            'Price_Efficiency',   # Price efficiency measure
+            'Volume_Ratio', 'Volume_Price_Trend', 'Volume_Breakout',
+            'Price_Volume', 'VPT_Normalized', 'Price_Efficiency',
             
             # === SENTIMENT (temporally accurate) ===
-            'Overall_Sentiment',  # Market sentiment
-            'Sentiment_Change',   # Sentiment momentum
-            'Sentiment_Volatility', # Sentiment stability
-            'Sentiment_Price_Divergence', # Sentiment vs price divergence
-            'Sentiment_Momentum', # Sentiment trend
-            'Sentiment_Regime',   # Sentiment regime
-            'Sentiment_Strength', # Sentiment conviction
+            'Overall_Sentiment', 'Sentiment_Change', 'Sentiment_Volatility',
+            'Sentiment_Price_Divergence', 'Sentiment_Momentum', 'Sentiment_Regime',
+            'Sentiment_Strength',
             
             # === TREND ANALYSIS (multi-timeframe) ===
-            'Trend_Persistence',  # Trend consistency
-            'Trend_Acceleration', # Trend acceleration
-            'Multi_Trend_Align',  # Multi-timeframe alignment
-            'Fractal_Efficiency', # Market efficiency
+            'Trend_Persistence', 'Trend_Acceleration', 'Multi_Trend_Align',
+            'Fractal_Efficiency',
             
             # === RISK MEASURES (financial specific) ===
-            'Relative_Strength',  # Risk-adjusted returns
-            'Sharpe_5d',          # Short-term Sharpe ratio
-            'Sharpe_20d',         # Long-term Sharpe ratio
-            'Sharpe_Ratio',       # Sharpe ratio comparison
-            'Jump_Score',         # Jump/outlier detection
-            'Outlier_Signal',     # Outlier signals
+            'Relative_Strength', 'Sharpe_5d', 'Sharpe_20d', 'Sharpe_Ratio',
+            'Jump_Score', 'Outlier_Signal',
             
             # === MARKET REGIME (comprehensive) ===
-            'Bull_Regime',        # Bull market detection
-            'Bear_Regime',        # Bear market detection
-            'High_Vol_Regime',    # High volatility regime
-            'Stress_Indicator',   # Market stress
-            'Vol_Term_Structure', # Volatility term structure
+            'Bull_Regime', 'Bear_Regime', 'High_Vol_Regime', 'Stress_Indicator',
+            'Vol_Term_Structure',
             
             # === SEASONAL EFFECTS (temporal patterns) ===
-            'Month_Effect',       # Monthly seasonality
-            'Quarter_Effect',     # Quarterly effects
-            'January_Effect',     # January effect
-            'December_Effect',    # December effect
-            'Quarter_End',        # Quarter-end effects
+            'Month_Effect', 'Quarter_Effect', 'January_Effect', 'December_Effect',
+            'Quarter_End',
             
             # === MICROSTRUCTURE (detailed) ===
-            'Spread_Proxy',       # Bid-ask spread proxy
-            'Spread_Anomaly',     # Spread anomalies
-            'Price_Percentile_20d', # Price percentile ranking
-            'Price_Percentile_50d', # Longer-term ranking
+            'Spread_Proxy', 'Spread_Anomaly', 'Price_Percentile_20d',
+            'Price_Percentile_50d',
             
             # === EARNINGS FEATURES (temporal accuracy) ===
-            'Days_To_Earnings',   # Days to next earnings
-            'Earnings_Beat_History', # Historical beat rate
-            'EPS_Growth_Rate',    # EPS growth trend
-            'Earnings_Surprise_Avg', # Average surprise
-            'Earnings_Volatility', # Earnings volatility
-            'Recent_Earnings_Trend', # Recent trend
+            'Days_To_Earnings', 'Earnings_Beat_History', 'EPS_Growth_Rate',
+            'Earnings_Surprise_Avg', 'Earnings_Volatility', 'Recent_Earnings_Trend',
         ]
         
-        # Ensure all columns exist and handle missing features gracefully
-        available_features = [col for col in feature_columns if col in enhanced_data.columns]
+        # Add advanced features if they exist from the enhanced feature engineering
+        advanced_features = [
+            # Price efficiency and microstructure
+            'Price_Efficiency', 'Fractal_Dimension', 'High_Low_Ratio', 'Open_Close_Ratio',
+            'Doji_Score', 'Body_Shadow_Ratio', 'Gap_Up', 'Gap_Down', 'Gap_Size',
+            'VWAP', 'Price_VWAP_Ratio',
+            
+            # Advanced volatility features
+            'Realized_Vol_5d', 'Realized_Vol_10d', 'Realized_Vol_20d', 'Realized_Vol_30d', 'Realized_Vol_50d',
+            'Vol_Skew_5d', 'Vol_Skew_10d', 'Vol_Skew_20d', 'Vol_Skew_30d', 'Vol_Skew_50d',
+            'Vol_Kurt_5d', 'Vol_Kurt_10d', 'Vol_Kurt_20d', 'Vol_Kurt_30d', 'Vol_Kurt_50d',
+            'Vol_Regime_Short', 'Vol_Regime_Long', 'Vol_Momentum', 'Vol_Clustering',
+            'Range_Vol', 'Range_Vol_MA', 'Range_Vol_Std',
+            
+            # Multi-timeframe technical features
+            'SMA_5', 'SMA_10', 'SMA_15', 'SMA_20', 'SMA_30', 'SMA_50', 'SMA_100', 'SMA_200',
+            'EMA_5', 'EMA_10', 'EMA_15', 'EMA_20', 'EMA_30', 'EMA_50', 'EMA_100', 'EMA_200',
+            'Price_SMA_5_Ratio', 'Price_SMA_10_Ratio', 'Price_SMA_15_Ratio', 'Price_SMA_30_Ratio',
+            'Price_Above_SMA_5', 'Price_Above_SMA_10', 'Price_Above_SMA_15', 'Price_Above_SMA_20',
+            'SMA_5_20_Cross', 'SMA_20_50_Cross',
+            'BB_Upper_10', 'BB_Lower_10', 'BB_Position_10', 'BB_Width_10',
+            'BB_Upper_20', 'BB_Lower_20', 'BB_Position_20', 'BB_Width_20',
+            'BB_Upper_50', 'BB_Lower_50', 'BB_Position_50', 'BB_Width_50',
+            
+            # Statistical features
+            'Returns_Mean_5d', 'Returns_Mean_10d', 'Returns_Mean_20d', 'Returns_Mean_30d', 'Returns_Mean_50d',
+            'Returns_Std_5d', 'Returns_Std_10d', 'Returns_Std_20d', 'Returns_Std_30d', 'Returns_Std_50d',
+            'Returns_Skew_5d', 'Returns_Skew_10d', 'Returns_Skew_20d', 'Returns_Skew_30d', 'Returns_Skew_50d',
+            'Returns_Kurt_5d', 'Returns_Kurt_10d', 'Returns_Kurt_20d', 'Returns_Kurt_30d', 'Returns_Kurt_50d',
+            'Returns_Q25_5d', 'Returns_Q25_10d', 'Returns_Q25_20d', 'Returns_Q25_30d', 'Returns_Q25_50d',
+            'Returns_Q75_5d', 'Returns_Q75_10d', 'Returns_Q75_20d', 'Returns_Q75_30d', 'Returns_Q75_50d',
+            'Returns_IQR_5d', 'Returns_IQR_10d', 'Returns_IQR_20d', 'Returns_IQR_30d', 'Returns_IQR_50d',
+            'Returns_Normality', 'Returns_Jarque_Bera', 'VaR_95', 'CVaR_95', 'Tail_Ratio',
+            
+            # Regime features
+            'Trend_Strength', 'Trend_Persistence', 'Trend_Acceleration',
+            'Bull_Market_50_200', 'Bull_Market_20_50', 'Price_Above_200MA',
+            'Crisis_Indicator', 'High_Vol_Regime', 'Low_Vol_Regime',
+            
+            # Momentum and mean reversion
+            'Momentum_3d', 'Momentum_5d', 'Momentum_10d', 'Momentum_20d', 'Momentum_50d',
+            'Momentum_Rank_3d', 'Momentum_Rank_5d', 'Momentum_Rank_10d', 'Momentum_Rank_20d', 'Momentum_Rank_50d',
+            'Mean_Reversion_Z_5d', 'Mean_Reversion_Z_10d', 'Mean_Reversion_Z_20d',
+            'RSI_14', 'RSI_30', 'RSI_Divergence',
+            
+            # Market structure features
+            'Volume_SMA_20', 'Volume_Momentum', 'Price_Volume_Correlation',
+            'Bid_Ask_Proxy', 'Market_Impact_Proxy',
+            'Month', 'Quarter', 'Day_of_Week', 'Month_End',
+            
+            # Predictive alpha features
+            'Future_Returns_Signal', 'Reversal_Signal', 'Breakout_Signal',
+            'Alpha_Decay_5d', 'Alpha_Decay_20d', 'Info_Ratio_Proxy', 'Sharpe_Proxy',
+            
+            # Feature interactions (key ones)
+            'Momentum_5d_x_Mean_Reversion_5d', 'Momentum_20d_x_Mean_Reversion_20d',
+            'RSI_14_x_Volume_Ratio', 'Trend_Strength_x_Realized_Vol_20d',
+            'Momentum_5d_squared', 'RSI_14_squared', 'Trend_Strength_squared',
+            'Momentum_5d_log', 'RSI_14_log', 'Trend_Strength_log',
+        ]
         
-        logger.info(f"Using {len(available_features)} features for training: {available_features}")
+        # Combine all potential features
+        all_potential_features = core_features + advanced_features
+        
+        # Filter to only available features in the dataset
+        available_features = [col for col in all_potential_features if col in enhanced_data.columns]
+        
+        # If we don't have enough features, add any remaining numeric columns
+        if len(available_features) < 20:
+            numeric_cols = enhanced_data.select_dtypes(include=[np.number]).columns.tolist()
+            additional_features = [col for col in numeric_cols if col not in available_features 
+                                 and col not in ['Close', 'Open', 'High', 'Low', 'Volume']]  # Exclude base OHLCV
+            available_features.extend(additional_features[:50])  # Add up to 50 additional features
+        
+        logger.info(f"🎯 ENHANCED FEATURE SELECTION: Using {len(available_features)} features for maximum R² improvement")
+        logger.info(f"Selected features: {available_features[:10]}... (showing first 10 of {len(available_features)})")
         
         # Validate feature data quality
         feature_data = enhanced_data[available_features].copy()
@@ -1866,7 +1901,7 @@ class EnhancedLSTMPredictor:
         
         return model
     
-    def train_enhanced_model(self, period: str = "3y", mega_data: bool = False) -> Dict:
+    def train_enhanced_model(self, period: str = "max", mega_data: bool = True) -> Dict:
         """
         Train enhanced LSTM model with quality validation and automatic cleanup
         
