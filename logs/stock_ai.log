@@ -675,3 +675,1073 @@
 2025-08-06 21:07:35,325 - src.models.lstm_predictor - WARNING - High validation loss detected: 0.3244 - model may be poor quality
 2025-08-06 21:07:35,735 - src.models.lstm_predictor - ERROR - Model quality validation failed: Model overfitting detected: Val R² 0.011 vs Test R² -0.191
 2025-08-06 21:07:35,735 - src.models.lstm_predictor - INFO - Cleaning up poor quality model files...
+2025-08-06 21:29:40,400 - src.models.lstm_predictor - INFO - Starting enhanced training for AAPL
+2025-08-06 21:29:40,400 - src.data.collector - INFO - Fetching fresh data for AAPL (3y)
+2025-08-06 21:29:40,986 - src.data.collector - INFO - Running data validation pipeline for AAPL
+2025-08-06 21:29:40,986 - src.data.validator - INFO - Starting validation for AAPL with 752 rows
+2025-08-06 21:29:40,997 - src.data.validator - INFO - Validation complete for AAPL: 752 clean rows
+2025-08-06 21:29:40,998 - src.data.validator - INFO - Pipeline complete for AAPL: 752 -> 752 rows
+2025-08-06 21:29:40,998 - src.data.collector - INFO - Data pipeline: 752 -> 752 rows
+2025-08-06 21:29:41,277 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-06 21:29:41,299 - src.models.lstm_predictor - INFO - Adding historical sentiment features for training period...
+2025-08-06 21:29:41,300 - src.analysis.sentiment - INFO - Analyzing sentiment for AAPL over 7d
+2025-08-06 21:29:41,300 - src.analysis.sentiment - INFO - Fetching news sentiment from Alpha Vantage for AAPL
+2025-08-06 21:29:41,460 - src.analysis.sentiment - INFO - Alpha Vantage response keys: ['Information']
+2025-08-06 21:29:41,460 - src.analysis.sentiment - WARNING - No 'feed' key in Alpha Vantage response for AAPL
+2025-08-06 21:29:41,460 - src.analysis.sentiment - WARNING - Unexpected response structure: {'Information': 'We have detected your API key as TROVSB0QXA6N4OFS and our standard API rate limit is 25 requests per day. Please subscribe to any of the premium plans at https://www.alphavantage.co/premium/ to instantly remove all daily rate limits.'}
+2025-08-06 21:29:41,460 - src.analysis.sentiment - INFO - Trying alternative news sources for AAPL
+2025-08-06 21:29:41,750 - src.analysis.sentiment - INFO - yfinance returned 10 news items for AAPL
+2025-08-06 21:29:44,344 - src.models.lstm_predictor - INFO - Added sentiment features: avg_sentiment=-0.003, confidence=0.650
+2025-08-06 21:29:44,344 - src.models.lstm_predictor - INFO - Adding historical earnings features for training period...
+2025-08-06 21:29:44,710 - src.analysis.fundamentals - INFO - Retrieved 3 earnings events for AAPL
+2025-08-06 21:29:44,712 - src.models.lstm_predictor - INFO - Found 3 earnings events for analysis
+2025-08-06 21:29:44,714 - src.models.lstm_predictor - WARNING - Could not add earnings features: Cannot subtract tz-naive and tz-aware datetime-like objects.
+2025-08-06 21:29:44,732 - src.models.lstm_predictor - INFO - Generated 43 historical features from 752 data points
+2025-08-06 21:29:44,732 - src.models.lstm_predictor - INFO - Using 22 features for training: ['Momentum_1d', 'Momentum_3d', 'Momentum_5d', 'Price_SMA5_Ratio', 'Price_SMA20_Ratio', 'SMA_Cross', 'Volatility_5d', 'Vol_Ratio', 'Volume_Ratio', 'Price_Volume', 'RSI_Normalized', 'MACD_Histogram', 'BB_Position', 'Returns_Lag1', 'Returns_Lag2', 'Overall_Sentiment', 'Confidence_Score', 'Bullish_Ratio', 'Bearish_Ratio', 'Sentiment_Change', 'Sentiment_Price_Divergence', 'News_Volume']
+2025-08-06 21:29:44,734 - src.models.lstm_predictor - WARNING - Removing zero-variance features: ['Bullish_Ratio', 'Bearish_Ratio']
+2025-08-06 21:29:44,735 - src.models.lstm_predictor - INFO - SIMPLIFIED target engineering: 15-day returns
+2025-08-06 21:29:44,736 - src.models.lstm_predictor - INFO - Target stats - Mean: 0.006198, Std: 0.059051
+2025-08-06 21:29:44,736 - src.models.lstm_predictor - INFO - Target range - Min: -0.122039, Max: 0.122039
+2025-08-06 21:29:44,736 - src.models.lstm_predictor - INFO - 95th percentile used for clipping: 0.122039
+2025-08-06 21:29:44,738 - src.models.lstm_predictor - INFO - Prepared training data: (721, 30, 20) features, (721,) targets
+2025-08-06 21:29:44,785 - src.models.lstm_predictor - INFO - Using RobustScaler for target variable (better for financial data)
+2025-08-06 21:29:44,785 - src.models.lstm_predictor - INFO - Pre-scaling target stats - Mean: 0.014552, Std: 0.056994
+2025-08-06 21:29:44,786 - src.models.lstm_predictor - INFO - Pre-scaling target range - Min: -0.122039, Max: 0.122039
+2025-08-06 21:29:44,786 - src.models.lstm_predictor - INFO - Post-scaling target stats - Train mean: -0.040521, Train std: 0.463943
+2025-08-06 21:29:44,786 - src.models.lstm_predictor - INFO - Post-scaling validation - Val mean: -0.147525, Val std: 0.497227
+2025-08-06 21:29:44,786 - src.models.lstm_predictor - INFO - Data splits - Train: 504, Val: 108, Test: 109
+2025-08-06 21:29:44,786 - src.models.lstm_predictor - INFO - Target scaling - Train mean: 0.014552, Train std: 0.056994
+2025-08-06 21:29:44,847 - src.models.lstm_predictor - INFO - Built SIMPLIFIED model: 64 LSTM units, single layer
+2025-08-06 21:29:44,848 - src.models.lstm_predictor - INFO - Very conservative learning rate: 0.0001
+2025-08-06 21:29:44,848 - src.models.lstm_predictor - INFO - Model architecture: 30 time steps, 20 features
+2025-08-06 21:29:44,848 - src.models.lstm_predictor - INFO - SIMPLIFIED model with conservative parameters for stability
+2025-08-06 21:29:48,154 - src.models.lstm_predictor - WARNING - High validation loss detected: 0.3197 - model may be poor quality
+2025-08-06 21:29:48,599 - src.data.collector - INFO - Fetching fresh data for AAPL (5d)
+2025-08-06 21:29:48,703 - src.data.collector - INFO - Running data validation pipeline for AAPL
+2025-08-06 21:29:48,704 - src.data.validator - INFO - Starting validation for AAPL with 5 rows
+2025-08-06 21:29:48,704 - src.data.validator - ERROR - Data validation failed for AAPL: ['Insufficient data: 5 rows < 50 minimum']
+2025-08-06 21:29:48,704 - src.data.collector - ERROR - Data validation failed for AAPL: Data validation failed: Insufficient data: 5 rows < 50 minimum
+2025-08-06 21:29:48,704 - src.data.collector - WARNING - Proceeding with raw data for AAPL
+2025-08-06 21:29:48,850 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-06 21:29:48,850 - src.models.lstm_predictor - INFO - Model passed quality validation: Model quality acceptable: R² = 0.028
+2025-08-06 21:29:48,850 - absl - WARNING - You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+2025-08-06 21:29:48,954 - src.models.lstm_predictor - INFO - Metrics saved to data/models/AAPL/AAPL_metrics.json
+2025-08-06 21:29:48,954 - src.models.lstm_predictor - INFO - Enhanced training completed successfully - Quality: Fair 👌
+2025-08-06 21:30:36,795 - src.models.lstm_predictor - ERROR - Error loading enhanced model for AAPL: Could not locate function 'mse'. Make sure custom classes are decorated with `@keras.saving.register_keras_serializable()`. Full object config: {'module': 'keras.metrics', 'class_name': 'function', 'config': 'mse', 'registered_name': 'mse'}
+2025-08-06 21:31:32,932 - src.models.lstm_predictor - INFO - Starting enhanced training for AAPL
+2025-08-06 21:31:32,932 - src.models.lstm_predictor - INFO - Removed existing model file: data/models/AAPL/AAPL_scaler.pkl
+2025-08-06 21:31:32,933 - src.models.lstm_predictor - INFO - Removed existing model file: data/models/AAPL/AAPL_feature_scaler.pkl
+2025-08-06 21:31:32,976 - src.models.lstm_predictor - INFO - Removed existing model file: data/models/AAPL/AAPL_metrics.json
+2025-08-06 21:31:32,976 - src.data.collector - INFO - Fetching fresh data for AAPL (3y)
+2025-08-06 21:31:33,571 - src.data.collector - INFO - Running data validation pipeline for AAPL
+2025-08-06 21:31:33,571 - src.data.validator - INFO - Starting validation for AAPL with 752 rows
+2025-08-06 21:31:33,582 - src.data.validator - INFO - Validation complete for AAPL: 752 clean rows
+2025-08-06 21:31:33,583 - src.data.validator - INFO - Pipeline complete for AAPL: 752 -> 752 rows
+2025-08-06 21:31:33,583 - src.data.collector - INFO - Data pipeline: 752 -> 752 rows
+2025-08-06 21:31:33,797 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-06 21:31:33,807 - src.models.lstm_predictor - INFO - Adding historical sentiment features for training period...
+2025-08-06 21:31:33,807 - src.analysis.sentiment - INFO - Analyzing sentiment for AAPL over 7d
+2025-08-06 21:31:33,807 - src.analysis.sentiment - INFO - Fetching news sentiment from Alpha Vantage for AAPL
+2025-08-06 21:31:33,974 - src.analysis.sentiment - INFO - Alpha Vantage response keys: ['Information']
+2025-08-06 21:31:33,974 - src.analysis.sentiment - WARNING - No 'feed' key in Alpha Vantage response for AAPL
+2025-08-06 21:31:33,974 - src.analysis.sentiment - WARNING - Unexpected response structure: {'Information': 'We have detected your API key as TROVSB0QXA6N4OFS and our standard API rate limit is 25 requests per day. Please subscribe to any of the premium plans at https://www.alphavantage.co/premium/ to instantly remove all daily rate limits.'}
+2025-08-06 21:31:33,974 - src.analysis.sentiment - INFO - Trying alternative news sources for AAPL
+2025-08-06 21:31:34,251 - src.analysis.sentiment - INFO - yfinance returned 10 news items for AAPL
+2025-08-06 21:31:37,563 - src.models.lstm_predictor - INFO - Added sentiment features: avg_sentiment=-0.003, confidence=0.650
+2025-08-06 21:31:37,563 - src.models.lstm_predictor - INFO - Adding historical earnings features for training period...
+2025-08-06 21:31:38,003 - src.analysis.fundamentals - INFO - Retrieved 3 earnings events for AAPL
+2025-08-06 21:31:38,005 - src.models.lstm_predictor - INFO - Found 3 earnings events for analysis
+2025-08-06 21:31:38,007 - src.models.lstm_predictor - WARNING - Could not add earnings features: Cannot subtract tz-naive and tz-aware datetime-like objects.
+2025-08-06 21:31:38,022 - src.models.lstm_predictor - INFO - Generated 43 historical features from 752 data points
+2025-08-06 21:31:38,022 - src.models.lstm_predictor - INFO - Using 22 features for training: ['Momentum_1d', 'Momentum_3d', 'Momentum_5d', 'Price_SMA5_Ratio', 'Price_SMA20_Ratio', 'SMA_Cross', 'Volatility_5d', 'Vol_Ratio', 'Volume_Ratio', 'Price_Volume', 'RSI_Normalized', 'MACD_Histogram', 'BB_Position', 'Returns_Lag1', 'Returns_Lag2', 'Overall_Sentiment', 'Confidence_Score', 'Bullish_Ratio', 'Bearish_Ratio', 'Sentiment_Change', 'Sentiment_Price_Divergence', 'News_Volume']
+2025-08-06 21:31:38,024 - src.models.lstm_predictor - WARNING - Removing zero-variance features: ['Bullish_Ratio', 'Bearish_Ratio']
+2025-08-06 21:31:38,026 - src.models.lstm_predictor - INFO - SIMPLIFIED target engineering: 15-day returns
+2025-08-06 21:31:38,026 - src.models.lstm_predictor - INFO - Target stats - Mean: 0.006198, Std: 0.059051
+2025-08-06 21:31:38,026 - src.models.lstm_predictor - INFO - Target range - Min: -0.122039, Max: 0.122039
+2025-08-06 21:31:38,026 - src.models.lstm_predictor - INFO - 95th percentile used for clipping: 0.122039
+2025-08-06 21:31:38,027 - src.models.lstm_predictor - INFO - Prepared training data: (721, 30, 20) features, (721,) targets
+2025-08-06 21:31:38,074 - src.models.lstm_predictor - INFO - Using RobustScaler for target variable (better for financial data)
+2025-08-06 21:31:38,074 - src.models.lstm_predictor - INFO - Pre-scaling target stats - Mean: 0.014552, Std: 0.056994
+2025-08-06 21:31:38,074 - src.models.lstm_predictor - INFO - Pre-scaling target range - Min: -0.122039, Max: 0.122039
+2025-08-06 21:31:38,076 - src.models.lstm_predictor - INFO - Post-scaling target stats - Train mean: -0.040523, Train std: 0.463943
+2025-08-06 21:31:38,076 - src.models.lstm_predictor - INFO - Post-scaling validation - Val mean: -0.147527, Val std: 0.497227
+2025-08-06 21:31:38,076 - src.models.lstm_predictor - INFO - Data splits - Train: 504, Val: 108, Test: 109
+2025-08-06 21:31:38,076 - src.models.lstm_predictor - INFO - Target scaling - Train mean: 0.014552, Train std: 0.056994
+2025-08-06 21:31:38,136 - src.models.lstm_predictor - INFO - Built SIMPLIFIED model: 64 LSTM units, single layer
+2025-08-06 21:31:38,136 - src.models.lstm_predictor - INFO - Very conservative learning rate: 0.0001
+2025-08-06 21:31:38,136 - src.models.lstm_predictor - INFO - Model architecture: 30 time steps, 20 features
+2025-08-06 21:31:38,136 - src.models.lstm_predictor - INFO - SIMPLIFIED model with conservative parameters for stability
+2025-08-06 21:31:42,263 - src.models.lstm_predictor - WARNING - High validation loss detected: 0.3201 - model may be poor quality
+2025-08-06 21:31:42,766 - src.models.lstm_predictor - ERROR - Model quality validation failed: Model overfitting detected: Val R² 0.025 vs Test R² -0.156
+2025-08-06 21:31:42,766 - src.models.lstm_predictor - INFO - Cleaning up poor quality model files...
+2025-08-06 21:32:32,668 - src.models.lstm_predictor - INFO - Starting enhanced training for AAPL
+2025-08-06 21:32:32,668 - src.data.collector - INFO - Fetching fresh data for AAPL (5y)
+2025-08-06 21:32:33,272 - src.data.collector - INFO - Running data validation pipeline for AAPL
+2025-08-06 21:32:33,272 - src.data.validator - INFO - Starting validation for AAPL with 1255 rows
+2025-08-06 21:32:33,283 - src.data.validator - INFO - Validation complete for AAPL: 1255 clean rows
+2025-08-06 21:32:33,284 - src.data.validator - INFO - Pipeline complete for AAPL: 1255 -> 1255 rows
+2025-08-06 21:32:33,284 - src.data.collector - INFO - Data pipeline: 1255 -> 1255 rows
+2025-08-06 21:32:33,499 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-06 21:32:33,519 - src.models.lstm_predictor - INFO - Adding historical sentiment features for training period...
+2025-08-06 21:32:33,519 - src.analysis.sentiment - INFO - Analyzing sentiment for AAPL over 7d
+2025-08-06 21:32:33,519 - src.analysis.sentiment - INFO - Fetching news sentiment from Alpha Vantage for AAPL
+2025-08-06 21:32:33,669 - src.analysis.sentiment - INFO - Alpha Vantage response keys: ['Information']
+2025-08-06 21:32:33,669 - src.analysis.sentiment - WARNING - No 'feed' key in Alpha Vantage response for AAPL
+2025-08-06 21:32:33,669 - src.analysis.sentiment - WARNING - Unexpected response structure: {'Information': 'We have detected your API key as TROVSB0QXA6N4OFS and our standard API rate limit is 25 requests per day. Please subscribe to any of the premium plans at https://www.alphavantage.co/premium/ to instantly remove all daily rate limits.'}
+2025-08-06 21:32:33,669 - src.analysis.sentiment - INFO - Trying alternative news sources for AAPL
+2025-08-06 21:32:33,913 - src.analysis.sentiment - INFO - yfinance returned 10 news items for AAPL
+2025-08-06 21:32:36,401 - src.models.lstm_predictor - INFO - Added sentiment features: avg_sentiment=-0.003, confidence=0.650
+2025-08-06 21:32:36,402 - src.models.lstm_predictor - INFO - Adding historical earnings features for training period...
+2025-08-06 21:32:36,768 - src.analysis.fundamentals - INFO - Retrieved 3 earnings events for AAPL
+2025-08-06 21:32:36,770 - src.models.lstm_predictor - INFO - Found 3 earnings events for analysis
+2025-08-06 21:32:36,772 - src.models.lstm_predictor - WARNING - Could not add earnings features: Cannot subtract tz-naive and tz-aware datetime-like objects.
+2025-08-06 21:32:36,788 - src.models.lstm_predictor - INFO - Generated 43 historical features from 1255 data points
+2025-08-06 21:32:36,788 - src.models.lstm_predictor - INFO - Using 22 features for training: ['Momentum_1d', 'Momentum_3d', 'Momentum_5d', 'Price_SMA5_Ratio', 'Price_SMA20_Ratio', 'SMA_Cross', 'Volatility_5d', 'Vol_Ratio', 'Volume_Ratio', 'Price_Volume', 'RSI_Normalized', 'MACD_Histogram', 'BB_Position', 'Returns_Lag1', 'Returns_Lag2', 'Overall_Sentiment', 'Confidence_Score', 'Bullish_Ratio', 'Bearish_Ratio', 'Sentiment_Change', 'Sentiment_Price_Divergence', 'News_Volume']
+2025-08-06 21:32:36,791 - src.models.lstm_predictor - WARNING - Removing zero-variance features: ['Bullish_Ratio', 'Bearish_Ratio']
+2025-08-06 21:32:36,792 - src.models.lstm_predictor - INFO - SIMPLIFIED target engineering: 15-day returns
+2025-08-06 21:32:36,792 - src.models.lstm_predictor - INFO - Target stats - Mean: 0.009102, Std: 0.061980
+2025-08-06 21:32:36,793 - src.models.lstm_predictor - INFO - Target range - Min: -0.123370, Max: 0.123370
+2025-08-06 21:32:36,793 - src.models.lstm_predictor - INFO - 95th percentile used for clipping: 0.123370
+2025-08-06 21:32:36,796 - src.models.lstm_predictor - INFO - Prepared training data: (1224, 30, 20) features, (1224,) targets
+2025-08-06 21:32:36,866 - src.models.lstm_predictor - INFO - Using RobustScaler for target variable (better for financial data)
+2025-08-06 21:32:36,866 - src.models.lstm_predictor - INFO - Pre-scaling target stats - Mean: 0.010110, Std: 0.062171
+2025-08-06 21:32:36,866 - src.models.lstm_predictor - INFO - Pre-scaling target range - Min: -0.123370, Max: 0.123370
+2025-08-06 21:32:36,867 - src.models.lstm_predictor - INFO - Post-scaling target stats - Train mean: -0.033985, Train std: 0.440073
+2025-08-06 21:32:36,867 - src.models.lstm_predictor - INFO - Post-scaling validation - Val mean: 0.044720, Val std: 0.381094
+2025-08-06 21:32:36,867 - src.models.lstm_predictor - INFO - Data splits - Train: 856, Val: 183, Test: 185
+2025-08-06 21:32:36,867 - src.models.lstm_predictor - INFO - Target scaling - Train mean: 0.010110, Train std: 0.062171
+2025-08-06 21:32:36,923 - src.models.lstm_predictor - INFO - Built SIMPLIFIED model: 64 LSTM units, single layer
+2025-08-06 21:32:36,923 - src.models.lstm_predictor - INFO - Very conservative learning rate: 0.0001
+2025-08-06 21:32:36,923 - src.models.lstm_predictor - INFO - Model architecture: 30 time steps, 20 features
+2025-08-06 21:32:36,924 - src.models.lstm_predictor - INFO - SIMPLIFIED model with conservative parameters for stability
+2025-08-06 21:32:55,817 - src.models.lstm_predictor - WARNING - High validation loss detected: 0.2245 - model may be poor quality
+2025-08-06 21:32:56,320 - src.models.lstm_predictor - ERROR - Model quality validation failed: Validation R² (-0.121) below minimum threshold (0.01)
+2025-08-06 21:32:56,320 - src.models.lstm_predictor - INFO - Cleaning up poor quality model files...
+2025-08-06 21:42:40,736 - src.models.lstm_predictor - INFO - Starting enhanced training for AAPL
+2025-08-06 21:42:40,737 - src.data.collector - INFO - Fetching fresh data for AAPL (5y)
+2025-08-06 21:42:41,333 - src.data.collector - INFO - Running data validation pipeline for AAPL
+2025-08-06 21:42:41,333 - src.data.validator - INFO - Starting validation for AAPL with 1255 rows
+2025-08-06 21:42:41,343 - src.data.validator - INFO - Validation complete for AAPL: 1255 clean rows
+2025-08-06 21:42:41,344 - src.data.validator - INFO - Pipeline complete for AAPL: 1255 -> 1255 rows
+2025-08-06 21:42:41,344 - src.data.collector - INFO - Data pipeline: 1255 -> 1255 rows
+2025-08-06 21:42:41,557 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-06 21:42:41,580 - src.models.lstm_predictor - INFO - Adding comprehensive 5-year historical sentiment features...
+2025-08-06 21:42:41,580 - src.models.lstm_predictor - INFO - Using 5y sentiment analysis for 5.0 years of data
+2025-08-06 21:42:41,580 - src.analysis.sentiment - INFO - Analyzing sentiment for AAPL over 1825 days (5y)
+2025-08-06 21:42:41,580 - src.analysis.sentiment - INFO - Using historical price-based sentiment for 5y period
+2025-08-06 21:42:41,771 - src.analysis.sentiment - INFO - Fetching news sentiment from Alpha Vantage for AAPL
+2025-08-06 21:42:42,006 - src.analysis.sentiment - INFO - Alpha Vantage response keys: ['Information']
+2025-08-06 21:42:42,007 - src.analysis.sentiment - WARNING - No 'feed' key in Alpha Vantage response for AAPL
+2025-08-06 21:42:42,007 - src.analysis.sentiment - WARNING - Unexpected response structure: {'Information': 'We have detected your API key as TROVSB0QXA6N4OFS and our standard API rate limit is 25 requests per day. Please subscribe to any of the premium plans at https://www.alphavantage.co/premium/ to instantly remove all daily rate limits.'}
+2025-08-06 21:42:42,007 - src.analysis.sentiment - INFO - Trying alternative news sources for AAPL
+2025-08-06 21:42:42,253 - src.analysis.sentiment - INFO - yfinance returned 10 news items for AAPL
+2025-08-06 21:42:42,384 - src.analysis.sentiment - INFO - Historical sentiment for AAPL: 0.242 (trend: 0.955, momentum: -0.060, confidence: 1.000, news: 10)
+2025-08-06 21:42:42,387 - src.models.lstm_predictor - INFO - Added 5y sentiment features: avg_sentiment=0.241, confidence=1.000, news_count=10
+2025-08-06 21:42:42,387 - src.models.lstm_predictor - INFO - Adding comprehensive 5-year earnings features for training period...
+2025-08-06 21:42:42,393 - src.models.lstm_predictor - WARNING - Could not add comprehensive earnings features: unexpected unindent (fundamentals.py, line 99)
+2025-08-06 21:42:42,403 - src.models.lstm_predictor - INFO - Generated 49 historical features from 1255 data points
+2025-08-06 21:42:42,403 - src.models.lstm_predictor - INFO - Using 22 features for training: ['Momentum_1d', 'Momentum_3d', 'Momentum_5d', 'Price_SMA5_Ratio', 'Price_SMA20_Ratio', 'SMA_Cross', 'Volatility_5d', 'Vol_Ratio', 'Volume_Ratio', 'Price_Volume', 'RSI_Normalized', 'MACD_Histogram', 'BB_Position', 'Returns_Lag1', 'Returns_Lag2', 'Overall_Sentiment', 'Confidence_Score', 'Bullish_Ratio', 'Bearish_Ratio', 'Sentiment_Change', 'Sentiment_Price_Divergence', 'News_Volume']
+2025-08-06 21:42:42,404 - src.models.lstm_predictor - WARNING - Removing zero-variance features: ['Confidence_Score']
+2025-08-06 21:42:42,405 - src.models.lstm_predictor - INFO - SIMPLIFIED target engineering: 15-day returns
+2025-08-06 21:42:42,405 - src.models.lstm_predictor - INFO - Target stats - Mean: 0.009102, Std: 0.061980
+2025-08-06 21:42:42,405 - src.models.lstm_predictor - INFO - Target range - Min: -0.123370, Max: 0.123370
+2025-08-06 21:42:42,405 - src.models.lstm_predictor - INFO - 95th percentile used for clipping: 0.123370
+2025-08-06 21:42:42,407 - src.models.lstm_predictor - INFO - Prepared training data: (1224, 30, 21) features, (1224,) targets
+2025-08-06 21:42:42,467 - src.models.lstm_predictor - INFO - Using RobustScaler for target variable (better for financial data)
+2025-08-06 21:42:42,467 - src.models.lstm_predictor - INFO - Pre-scaling target stats - Mean: 0.010110, Std: 0.062171
+2025-08-06 21:42:42,467 - src.models.lstm_predictor - INFO - Pre-scaling target range - Min: -0.123370, Max: 0.123370
+2025-08-06 21:42:42,467 - src.models.lstm_predictor - INFO - Post-scaling target stats - Train mean: -0.033983, Train std: 0.440073
+2025-08-06 21:42:42,467 - src.models.lstm_predictor - INFO - Post-scaling validation - Val mean: 0.044722, Val std: 0.381094
+2025-08-06 21:42:42,468 - src.models.lstm_predictor - INFO - Data splits - Train: 856, Val: 183, Test: 185
+2025-08-06 21:42:42,468 - src.models.lstm_predictor - INFO - Target scaling - Train mean: 0.010110, Train std: 0.062171
+2025-08-06 21:42:42,468 - src.models.lstm_predictor - INFO - Building COMPLEX model with 256 LSTM units and multi-layer architecture
+2025-08-06 21:42:42,615 - src.models.lstm_predictor - INFO - Complex model built: 1,282,753 parameters
+2025-08-06 21:42:42,615 - src.models.lstm_predictor - INFO - Architecture: 3 LSTM layers + 2 attention layers + 3 dense layers
+2025-08-06 21:42:42,615 - src.models.lstm_predictor - INFO - Model architecture: 30 time steps, 21 features
+2025-08-06 21:42:42,615 - src.models.lstm_predictor - INFO - SIMPLIFIED model with conservative parameters for stability
+2025-08-06 21:49:03,694 - src.models.lstm_predictor - WARNING - High validation loss detected: 0.9435 - model may be poor quality
+2025-08-06 21:49:06,464 - src.models.lstm_predictor - ERROR - Model quality validation failed: Validation R² (-0.098) below minimum threshold (0.01)
+2025-08-06 21:49:06,464 - src.models.lstm_predictor - INFO - Cleaning up poor quality model files...
+2025-08-06 21:55:56,095 - src.models.lstm_predictor - INFO - Starting enhanced training for AAPL
+2025-08-06 21:55:56,095 - src.data.collector - INFO - Fetching fresh data for AAPL (5y)
+2025-08-06 21:55:56,743 - src.data.collector - INFO - Running data validation pipeline for AAPL
+2025-08-06 21:55:56,743 - src.data.validator - INFO - Starting validation for AAPL with 1255 rows
+2025-08-06 21:55:56,753 - src.data.validator - INFO - Validation complete for AAPL: 1255 clean rows
+2025-08-06 21:55:56,754 - src.data.validator - INFO - Pipeline complete for AAPL: 1255 -> 1255 rows
+2025-08-06 21:55:56,754 - src.data.collector - INFO - Data pipeline: 1255 -> 1255 rows
+2025-08-06 21:55:57,839 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-06 21:55:57,863 - src.models.lstm_predictor - INFO - Adding comprehensive 5-year historical sentiment features...
+2025-08-06 21:55:57,863 - src.models.lstm_predictor - INFO - Using 5y sentiment analysis for 5.0 years of data
+2025-08-06 21:55:57,863 - src.analysis.sentiment - INFO - Analyzing sentiment for AAPL over 1825 days (5y)
+2025-08-06 21:55:57,863 - src.analysis.sentiment - INFO - Using historical price-based sentiment for 5y period
+2025-08-06 21:55:58,142 - src.analysis.sentiment - INFO - Fetching news sentiment from Alpha Vantage for AAPL
+2025-08-06 21:55:58,412 - src.analysis.sentiment - INFO - Alpha Vantage response keys: ['Information']
+2025-08-06 21:55:58,413 - src.analysis.sentiment - WARNING - No 'feed' key in Alpha Vantage response for AAPL
+2025-08-06 21:55:58,413 - src.analysis.sentiment - WARNING - Unexpected response structure: {'Information': 'We have detected your API key as TROVSB0QXA6N4OFS and our standard API rate limit is 25 requests per day. Please subscribe to any of the premium plans at https://www.alphavantage.co/premium/ to instantly remove all daily rate limits.'}
+2025-08-06 21:55:58,413 - src.analysis.sentiment - INFO - Trying alternative news sources for AAPL
+2025-08-06 21:55:58,708 - src.analysis.sentiment - INFO - yfinance returned 10 news items for AAPL
+2025-08-06 21:55:58,848 - src.analysis.sentiment - INFO - Historical sentiment for AAPL: 0.242 (trend: 0.955, momentum: -0.060, confidence: 1.000, news: 10)
+2025-08-06 21:55:58,851 - src.models.lstm_predictor - INFO - Added 5y sentiment features: avg_sentiment=0.241, confidence=1.000, news_count=10
+2025-08-06 21:55:58,851 - src.models.lstm_predictor - INFO - Adding comprehensive 5-year earnings features for training period...
+2025-08-06 21:55:58,863 - src.models.lstm_predictor - INFO - Requesting 19 earnings periods for 5.0 years of data
+2025-08-06 21:55:58,863 - src.analysis.fundamentals - INFO - Fetching 19 earnings periods for AAPL
+2025-08-06 21:55:59,242 - src.analysis.fundamentals - INFO - Finnhub: Retrieved 3 earnings events
+2025-08-06 21:55:59,245 - src.models.lstm_predictor - INFO - Found 3 earnings events for comprehensive analysis
+2025-08-06 21:55:59,260 - src.models.lstm_predictor - INFO - Added comprehensive earnings features: beat_rate=1.000, avg_surprise=0.073, volatility=0.000
+2025-08-06 21:55:59,276 - src.models.lstm_predictor - INFO - Generated 49 historical features from 1255 data points
+2025-08-06 21:55:59,276 - src.models.lstm_predictor - INFO - Using 22 features for training: ['Momentum_1d', 'Momentum_3d', 'Momentum_5d', 'Price_SMA5_Ratio', 'Price_SMA20_Ratio', 'SMA_Cross', 'Volatility_5d', 'Vol_Ratio', 'Volume_Ratio', 'Price_Volume', 'RSI_Normalized', 'MACD_Histogram', 'BB_Position', 'Returns_Lag1', 'Returns_Lag2', 'Overall_Sentiment', 'Confidence_Score', 'Bullish_Ratio', 'Bearish_Ratio', 'Sentiment_Change', 'Sentiment_Price_Divergence', 'News_Volume']
+2025-08-06 21:55:59,278 - src.models.lstm_predictor - WARNING - Removing zero-variance features: ['Confidence_Score']
+2025-08-06 21:55:59,279 - src.models.lstm_predictor - INFO - SIMPLIFIED target engineering: 15-day returns
+2025-08-06 21:55:59,279 - src.models.lstm_predictor - INFO - Target stats - Mean: 0.009102, Std: 0.061980
+2025-08-06 21:55:59,279 - src.models.lstm_predictor - INFO - Target range - Min: -0.123369, Max: 0.123369
+2025-08-06 21:55:59,279 - src.models.lstm_predictor - INFO - 95th percentile used for clipping: 0.123369
+2025-08-06 21:55:59,282 - src.models.lstm_predictor - INFO - Prepared training data: (1224, 30, 21) features, (1224,) targets
+2025-08-06 21:55:59,350 - src.models.lstm_predictor - INFO - Using RobustScaler for target variable (better for financial data)
+2025-08-06 21:55:59,351 - src.models.lstm_predictor - INFO - Pre-scaling target stats - Mean: 0.010110, Std: 0.062171
+2025-08-06 21:55:59,351 - src.models.lstm_predictor - INFO - Pre-scaling target range - Min: -0.123369, Max: 0.123369
+2025-08-06 21:55:59,351 - src.models.lstm_predictor - INFO - Post-scaling target stats - Train mean: -0.033986, Train std: 0.440073
+2025-08-06 21:55:59,351 - src.models.lstm_predictor - INFO - Post-scaling validation - Val mean: 0.044719, Val std: 0.381094
+2025-08-06 21:55:59,351 - src.models.lstm_predictor - INFO - Data splits - Train: 856, Val: 183, Test: 185
+2025-08-06 21:55:59,351 - src.models.lstm_predictor - INFO - Target scaling - Train mean: 0.010110, Train std: 0.062171
+2025-08-06 21:55:59,351 - src.models.lstm_predictor - INFO - Building COMPLEX model with 256 LSTM units and multi-layer architecture
+2025-08-06 21:55:59,503 - src.models.lstm_predictor - INFO - Complex model built: 1,282,753 parameters
+2025-08-06 21:55:59,503 - src.models.lstm_predictor - INFO - Architecture: 3 LSTM layers + 2 attention layers + 3 dense layers
+2025-08-06 21:55:59,503 - src.models.lstm_predictor - INFO - Model architecture: 30 time steps, 21 features
+2025-08-06 21:55:59,503 - src.models.lstm_predictor - INFO - SIMPLIFIED model with conservative parameters for stability
+2025-08-06 22:02:27,689 - src.models.lstm_predictor - WARNING - High validation loss detected: 1.1647 - model may be poor quality
+2025-08-06 22:02:30,515 - src.models.lstm_predictor - ERROR - Model quality validation failed: Validation R² (-0.026) below minimum threshold (0.01)
+2025-08-06 22:02:30,515 - src.models.lstm_predictor - INFO - Cleaning up poor quality model files...
+2025-08-06 22:06:05,452 - src.models.lstm_predictor - INFO - Starting enhanced training for AAPL
+2025-08-06 22:06:05,452 - src.data.collector - INFO - Fetching fresh data for AAPL (5y)
+2025-08-06 22:06:06,045 - src.data.collector - INFO - Running data validation pipeline for AAPL
+2025-08-06 22:06:06,045 - src.data.validator - INFO - Starting validation for AAPL with 1255 rows
+2025-08-06 22:06:06,057 - src.data.validator - INFO - Validation complete for AAPL: 1255 clean rows
+2025-08-06 22:06:06,057 - src.data.validator - INFO - Pipeline complete for AAPL: 1255 -> 1255 rows
+2025-08-06 22:06:06,057 - src.data.collector - INFO - Data pipeline: 1255 -> 1255 rows
+2025-08-06 22:06:06,314 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-06 22:06:06,348 - src.models.lstm_predictor - INFO - Adding comprehensive 5-year historical sentiment features...
+2025-08-06 22:06:06,349 - src.models.lstm_predictor - INFO - Using 5y sentiment analysis for 5.0 years of data
+2025-08-06 22:06:06,349 - src.analysis.sentiment - INFO - Analyzing sentiment for AAPL over 1825 days (5y)
+2025-08-06 22:06:06,349 - src.analysis.sentiment - INFO - Using historical price-based sentiment for 5y period
+2025-08-06 22:06:06,515 - src.analysis.sentiment - INFO - Fetching news sentiment from Alpha Vantage for AAPL
+2025-08-06 22:06:06,686 - src.analysis.sentiment - INFO - Alpha Vantage response keys: ['Information']
+2025-08-06 22:06:06,686 - src.analysis.sentiment - WARNING - No 'feed' key in Alpha Vantage response for AAPL
+2025-08-06 22:06:06,686 - src.analysis.sentiment - WARNING - Unexpected response structure: {'Information': 'We have detected your API key as TROVSB0QXA6N4OFS and our standard API rate limit is 25 requests per day. Please subscribe to any of the premium plans at https://www.alphavantage.co/premium/ to instantly remove all daily rate limits.'}
+2025-08-06 22:06:06,686 - src.analysis.sentiment - INFO - Trying alternative news sources for AAPL
+2025-08-06 22:06:06,921 - src.analysis.sentiment - INFO - yfinance returned 10 news items for AAPL
+2025-08-06 22:06:07,044 - src.analysis.sentiment - INFO - Historical sentiment for AAPL: 0.242 (trend: 0.955, momentum: -0.060, confidence: 1.000, news: 10)
+2025-08-06 22:06:07,046 - src.models.lstm_predictor - INFO - Added 5y sentiment features: avg_sentiment=0.241, confidence=1.000, news_count=10
+2025-08-06 22:06:07,046 - src.models.lstm_predictor - INFO - Adding comprehensive 5-year earnings features for training period...
+2025-08-06 22:06:07,049 - src.models.lstm_predictor - INFO - Requesting 19 earnings periods for 5.0 years of data
+2025-08-06 22:06:07,049 - src.analysis.fundamentals - INFO - Fetching 19 earnings periods for AAPL
+2025-08-06 22:06:07,401 - src.analysis.fundamentals - INFO - Finnhub: Retrieved 3 earnings events
+2025-08-06 22:06:07,404 - src.models.lstm_predictor - INFO - Found 3 earnings events for comprehensive analysis
+2025-08-06 22:06:07,419 - src.models.lstm_predictor - INFO - Added comprehensive earnings features: beat_rate=1.000, avg_surprise=0.073, volatility=0.000
+2025-08-06 22:06:07,439 - src.models.lstm_predictor - INFO - Generated 63 historical features from 1255 data points
+2025-08-06 22:06:07,439 - src.models.lstm_predictor - INFO - Using 33 features for training: ['Momentum_1d', 'Momentum_3d', 'Momentum_5d', 'Momentum_Consistency', 'Price_SMA5_Ratio', 'Price_SMA20_Ratio', 'SMA_Cross', 'Distance_From_SMA20', 'Mean_Reversion_Signal', 'Volatility_5d', 'Vol_Ratio', 'Vol_Persistence', 'Volume_Ratio', 'Price_Volume', 'VPT_Normalized', 'Price_Efficiency', 'RSI_Normalized', 'MACD_Histogram', 'BB_Position', 'Spread_Proxy', 'Spread_Anomaly', 'Price_Percentile_20d', 'Price_Percentile_50d', 'Returns_Lag1', 'Returns_Lag2', 'Price_Acceleration', 'Relative_Strength', 'Overall_Sentiment', 'Bullish_Ratio', 'Bearish_Ratio', 'Sentiment_Change', 'Sentiment_Price_Divergence', 'News_Volume']
+2025-08-06 22:06:07,444 - src.models.lstm_predictor - INFO - SIMPLIFIED target engineering: 15-day returns
+2025-08-06 22:06:07,444 - src.models.lstm_predictor - INFO - Target stats - Mean: 0.009102, Std: 0.061980
+2025-08-06 22:06:07,444 - src.models.lstm_predictor - INFO - Target range - Min: -0.123370, Max: 0.123370
+2025-08-06 22:06:07,444 - src.models.lstm_predictor - INFO - 95th percentile used for clipping: 0.123370
+2025-08-06 22:06:07,448 - src.models.lstm_predictor - INFO - Prepared training data: (1224, 30, 33) features, (1224,) targets
+2025-08-06 22:06:07,518 - src.models.lstm_predictor - INFO - Using RobustScaler for target variable (better for financial data)
+2025-08-06 22:06:07,518 - src.models.lstm_predictor - INFO - Pre-scaling target stats - Mean: 0.010110, Std: 0.062171
+2025-08-06 22:06:07,518 - src.models.lstm_predictor - INFO - Pre-scaling target range - Min: -0.123370, Max: 0.123370
+2025-08-06 22:06:07,518 - src.models.lstm_predictor - INFO - Post-scaling target stats - Train mean: -0.033985, Train std: 0.440073
+2025-08-06 22:06:07,518 - src.models.lstm_predictor - INFO - Post-scaling validation - Val mean: 0.044721, Val std: 0.381095
+2025-08-06 22:06:07,518 - src.models.lstm_predictor - INFO - Data splits - Train: 856, Val: 183, Test: 185
+2025-08-06 22:06:07,518 - src.models.lstm_predictor - INFO - Target scaling - Train mean: 0.010110, Train std: 0.062171
+2025-08-06 22:06:07,519 - src.models.lstm_predictor - INFO - Building COMPLEX model with 256 LSTM units and multi-layer architecture
+2025-08-06 22:06:07,671 - src.models.lstm_predictor - INFO - Complex model built: 1,295,041 parameters
+2025-08-06 22:06:07,671 - src.models.lstm_predictor - INFO - Architecture: 3 LSTM layers + 2 attention layers + 3 dense layers
+2025-08-06 22:06:07,671 - src.models.lstm_predictor - INFO - Model architecture: 30 time steps, 33 features
+2025-08-06 22:06:07,671 - src.models.lstm_predictor - INFO - SIMPLIFIED model with conservative parameters for stability
+2025-08-06 22:12:39,930 - src.models.lstm_predictor - WARNING - High validation loss detected: 1.3136 - model may be poor quality
+2025-08-06 22:12:42,927 - src.models.lstm_predictor - ERROR - Model quality validation failed: Model overfitting detected: Val R² 0.011 vs Test R² -0.070
+2025-08-06 22:12:42,928 - src.models.lstm_predictor - INFO - Cleaning up poor quality model files...
+2025-08-06 22:15:31,952 - src.models.lstm_predictor - INFO - Starting enhanced training for AAPL
+2025-08-06 22:15:31,952 - src.data.collector - INFO - Fetching fresh data for AAPL (5y)
+2025-08-06 22:15:32,620 - src.data.collector - INFO - Running data validation pipeline for AAPL
+2025-08-06 22:15:32,621 - src.data.validator - INFO - Starting validation for AAPL with 1255 rows
+2025-08-06 22:15:32,631 - src.data.validator - INFO - Validation complete for AAPL: 1255 clean rows
+2025-08-06 22:15:32,632 - src.data.validator - INFO - Pipeline complete for AAPL: 1255 -> 1255 rows
+2025-08-06 22:15:32,632 - src.data.collector - INFO - Data pipeline: 1255 -> 1255 rows
+2025-08-06 22:15:32,856 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-06 22:15:32,905 - src.models.lstm_predictor - INFO - Adding comprehensive 5-year historical sentiment features...
+2025-08-06 22:15:32,905 - src.models.lstm_predictor - INFO - Using 5y sentiment analysis for 5.0 years of data
+2025-08-06 22:15:32,905 - src.analysis.sentiment - INFO - Analyzing sentiment for AAPL over 1825 days (5y)
+2025-08-06 22:15:32,905 - src.analysis.sentiment - INFO - Using historical price-based sentiment for 5y period
+2025-08-06 22:15:33,088 - src.analysis.sentiment - INFO - Fetching news sentiment from Alpha Vantage for AAPL
+2025-08-06 22:15:33,285 - src.analysis.sentiment - INFO - Alpha Vantage response keys: ['Information']
+2025-08-06 22:15:33,286 - src.analysis.sentiment - WARNING - No 'feed' key in Alpha Vantage response for AAPL
+2025-08-06 22:15:33,286 - src.analysis.sentiment - WARNING - Unexpected response structure: {'Information': 'We have detected your API key as TROVSB0QXA6N4OFS and our standard API rate limit is 25 requests per day. Please subscribe to any of the premium plans at https://www.alphavantage.co/premium/ to instantly remove all daily rate limits.'}
+2025-08-06 22:15:33,286 - src.analysis.sentiment - INFO - Trying alternative news sources for AAPL
+2025-08-06 22:15:33,647 - src.analysis.sentiment - INFO - yfinance returned 10 news items for AAPL
+2025-08-06 22:15:33,781 - src.analysis.sentiment - INFO - Historical sentiment for AAPL: 0.242 (trend: 0.955, momentum: -0.060, confidence: 1.000, news: 10)
+2025-08-06 22:15:33,785 - src.models.lstm_predictor - INFO - Added 5y sentiment features: avg_sentiment=0.241, confidence=1.000, news_count=10
+2025-08-06 22:15:33,785 - src.models.lstm_predictor - INFO - Adding comprehensive 5-year earnings features for training period...
+2025-08-06 22:15:33,790 - src.models.lstm_predictor - INFO - Requesting 19 earnings periods for 5.0 years of data
+2025-08-06 22:15:33,790 - src.analysis.fundamentals - INFO - Fetching 19 earnings periods for AAPL
+2025-08-06 22:15:34,164 - src.analysis.fundamentals - INFO - Finnhub: Retrieved 3 earnings events
+2025-08-06 22:15:34,168 - src.models.lstm_predictor - INFO - Found 3 earnings events for comprehensive analysis
+2025-08-06 22:15:34,182 - src.models.lstm_predictor - INFO - Added comprehensive earnings features: beat_rate=1.000, avg_surprise=0.073, volatility=0.000
+2025-08-06 22:15:34,208 - src.models.lstm_predictor - INFO - Generated 91 historical features from 1255 data points
+2025-08-06 22:15:34,208 - src.models.lstm_predictor - INFO - Using 56 features for training: ['Momentum_1d', 'Momentum_3d', 'Momentum_5d', 'Momentum_Consistency', 'Price_SMA5_Ratio', 'Price_SMA20_Ratio', 'SMA_Cross', 'Distance_From_SMA20', 'Mean_Reversion_Signal', 'Volatility_5d', 'Vol_Ratio', 'Vol_Persistence', 'Volume_Ratio', 'Price_Volume', 'VPT_Normalized', 'Price_Efficiency', 'RSI_Normalized', 'MACD_Histogram', 'BB_Position', 'Spread_Proxy', 'Spread_Anomaly', 'Price_Percentile_20d', 'Price_Percentile_50d', 'Returns_Lag1', 'Returns_Lag2', 'Price_Acceleration', 'Relative_Strength', 'Fractal_Dimension', 'Jump_Intensity', 'Jump_Signal', 'Regime_Bull', 'Regime_Bear', 'Trend_1w', 'Trend_2w', 'Trend_Alignment', 'Vol_Innovation', 'Vol_Squared_Lag', 'Info_Ratio', 'Cross_Momentum', 'VWAP_Deviation', 'OFI_Proxy', 'OFI_MA', 'Noise_Ratio', 'Monday_Effect', 'Friday_Effect', 'January_Effect', 'December_Effect', 'Quarter_End', 'Vol_Term_Structure', 'Stress_Indicator', 'Overall_Sentiment', 'Bullish_Ratio', 'Bearish_Ratio', 'Sentiment_Change', 'Sentiment_Price_Divergence', 'News_Volume']
+2025-08-06 22:15:34,215 - src.models.lstm_predictor - INFO - SIMPLIFIED target engineering: 15-day returns
+2025-08-06 22:15:34,215 - src.models.lstm_predictor - INFO - Target stats - Mean: 0.009102, Std: 0.061980
+2025-08-06 22:15:34,215 - src.models.lstm_predictor - INFO - Target range - Min: -0.123370, Max: 0.123370
+2025-08-06 22:15:34,215 - src.models.lstm_predictor - INFO - 95th percentile used for clipping: 0.123370
+2025-08-06 22:15:34,220 - src.models.lstm_predictor - INFO - Prepared training data: (1224, 30, 56) features, (1224,) targets
+2025-08-06 22:15:34,291 - src.models.lstm_predictor - INFO - Using RobustScaler for target variable (better for financial data)
+2025-08-06 22:15:34,291 - src.models.lstm_predictor - INFO - Pre-scaling target stats - Mean: 0.010110, Std: 0.062171
+2025-08-06 22:15:34,291 - src.models.lstm_predictor - INFO - Pre-scaling target range - Min: -0.123370, Max: 0.123370
+2025-08-06 22:15:34,292 - src.models.lstm_predictor - INFO - Post-scaling target stats - Train mean: -0.033983, Train std: 0.440073
+2025-08-06 22:15:34,292 - src.models.lstm_predictor - INFO - Post-scaling validation - Val mean: 0.044722, Val std: 0.381094
+2025-08-06 22:15:34,292 - src.models.lstm_predictor - INFO - Data splits - Train: 856, Val: 183, Test: 185
+2025-08-06 22:15:34,292 - src.models.lstm_predictor - INFO - Target scaling - Train mean: 0.010110, Train std: 0.062171
+2025-08-06 22:15:34,292 - src.models.lstm_predictor - INFO - Building COMPLEX model with 256 LSTM units and multi-layer architecture
+2025-08-06 22:15:34,442 - src.models.lstm_predictor - INFO - Complex model built: 1,318,593 parameters
+2025-08-06 22:15:34,442 - src.models.lstm_predictor - INFO - Architecture: 3 LSTM layers + 2 attention layers + 3 dense layers
+2025-08-06 22:15:34,443 - src.models.lstm_predictor - INFO - Model architecture: 30 time steps, 56 features
+2025-08-06 22:15:34,443 - src.models.lstm_predictor - INFO - SIMPLIFIED model with conservative parameters for stability
+2025-08-06 22:22:21,766 - src.models.lstm_predictor - WARNING - High validation loss detected: 0.9978 - model may be poor quality
+2025-08-06 22:22:24,890 - src.models.lstm_predictor - ERROR - Model quality validation failed: Validation R² (-0.064) below minimum threshold (0.01)
+2025-08-06 22:22:24,890 - src.models.lstm_predictor - INFO - Cleaning up poor quality model files...
+2025-08-06 22:36:00,645 - src.models.lstm_predictor - INFO - Starting enhanced training for AAPL
+2025-08-06 22:36:00,646 - src.data.collector - INFO - Fetching fresh data for AAPL (5y)
+2025-08-06 22:36:01,346 - src.data.collector - INFO - Running data validation pipeline for AAPL
+2025-08-06 22:36:01,347 - src.data.validator - INFO - Starting validation for AAPL with 1255 rows
+2025-08-06 22:36:01,358 - src.data.validator - INFO - Validation complete for AAPL: 1255 clean rows
+2025-08-06 22:36:01,359 - src.data.validator - INFO - Pipeline complete for AAPL: 1255 -> 1255 rows
+2025-08-06 22:36:01,359 - src.data.collector - INFO - Data pipeline: 1255 -> 1255 rows
+2025-08-06 22:36:01,580 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-06 22:36:01,604 - src.models.lstm_predictor - ERROR - Enhanced training failed: 'Jump_Signal'
+2025-08-06 22:38:16,891 - src.models.lstm_predictor - INFO - Starting enhanced training for AAPL
+2025-08-06 22:38:16,891 - src.data.collector - INFO - Fetching fresh data for AAPL (5y)
+2025-08-06 22:38:17,476 - src.data.collector - INFO - Running data validation pipeline for AAPL
+2025-08-06 22:38:17,476 - src.data.validator - INFO - Starting validation for AAPL with 1255 rows
+2025-08-06 22:38:17,488 - src.data.validator - INFO - Validation complete for AAPL: 1255 clean rows
+2025-08-06 22:38:17,489 - src.data.validator - INFO - Pipeline complete for AAPL: 1255 -> 1255 rows
+2025-08-06 22:38:17,489 - src.data.collector - INFO - Data pipeline: 1255 -> 1255 rows
+2025-08-06 22:38:17,694 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-06 22:38:17,743 - src.models.lstm_predictor - ERROR - Enhanced training failed: 'Jump_Signal'
+2025-08-06 22:40:12,187 - src.models.lstm_predictor - INFO - Starting enhanced training for AAPL
+2025-08-06 22:40:12,188 - src.data.collector - INFO - Fetching fresh data for AAPL (5y)
+2025-08-06 22:40:12,910 - src.data.collector - INFO - Running data validation pipeline for AAPL
+2025-08-06 22:40:12,910 - src.data.validator - INFO - Starting validation for AAPL with 1255 rows
+2025-08-06 22:40:12,921 - src.data.validator - INFO - Validation complete for AAPL: 1255 clean rows
+2025-08-06 22:40:12,922 - src.data.validator - INFO - Pipeline complete for AAPL: 1255 -> 1255 rows
+2025-08-06 22:40:12,922 - src.data.collector - INFO - Data pipeline: 1255 -> 1255 rows
+2025-08-06 22:40:13,197 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-06 22:40:13,249 - src.models.lstm_predictor - INFO - Adding comprehensive 5-year historical sentiment features...
+2025-08-06 22:40:13,249 - src.models.lstm_predictor - INFO - Using 5y sentiment analysis for 5.0 years of data
+2025-08-06 22:40:13,249 - src.analysis.sentiment - INFO - Analyzing sentiment for AAPL over 1825 days (5y)
+2025-08-06 22:40:13,249 - src.analysis.sentiment - INFO - Using historical price-based sentiment for 5y period
+2025-08-06 22:40:13,400 - src.analysis.sentiment - INFO - Fetching news sentiment from Alpha Vantage for AAPL
+2025-08-06 22:40:13,659 - src.analysis.sentiment - INFO - Alpha Vantage response keys: ['Information']
+2025-08-06 22:40:13,659 - src.analysis.sentiment - WARNING - No 'feed' key in Alpha Vantage response for AAPL
+2025-08-06 22:40:13,659 - src.analysis.sentiment - WARNING - Unexpected response structure: {'Information': 'We have detected your API key as TROVSB0QXA6N4OFS and our standard API rate limit is 25 requests per day. Please subscribe to any of the premium plans at https://www.alphavantage.co/premium/ to instantly remove all daily rate limits.'}
+2025-08-06 22:40:13,659 - src.analysis.sentiment - INFO - Trying alternative news sources for AAPL
+2025-08-06 22:40:13,904 - src.analysis.sentiment - INFO - yfinance returned 10 news items for AAPL
+2025-08-06 22:40:14,041 - src.analysis.sentiment - INFO - Historical sentiment for AAPL: 0.242 (trend: 0.955, momentum: -0.060, confidence: 1.000, news: 10)
+2025-08-06 22:40:14,045 - src.models.lstm_predictor - INFO - Added 5y sentiment features: avg_sentiment=0.241, confidence=1.000, news_count=10
+2025-08-06 22:40:14,045 - src.models.lstm_predictor - INFO - Adding comprehensive 5-year earnings features for training period...
+2025-08-06 22:40:14,049 - src.models.lstm_predictor - INFO - Requesting 19 earnings periods for 5.0 years of data
+2025-08-06 22:40:14,049 - src.analysis.fundamentals - INFO - Fetching 19 earnings periods for AAPL
+2025-08-06 22:40:14,423 - src.analysis.fundamentals - INFO - Finnhub: Retrieved 3 earnings events
+2025-08-06 22:40:14,426 - src.models.lstm_predictor - INFO - Found 3 earnings events for comprehensive analysis
+2025-08-06 22:40:14,443 - src.models.lstm_predictor - INFO - Added comprehensive earnings features: beat_rate=1.000, avg_surprise=0.073, volatility=0.000
+2025-08-06 22:40:14,469 - src.models.lstm_predictor - INFO - Generated 92 historical features from 1255 data points
+2025-08-06 22:40:14,469 - src.models.lstm_predictor - INFO - Using 43 features for training: ['Momentum_1d', 'Momentum_3d', 'Momentum_5d', 'Momentum_Strength', 'Momentum_Quality', 'Trend_Persistence', 'Trend_Acceleration', 'Multi_Trend_Align', 'Volatility_5d', 'Vol_Ratio', 'Vol_Regime', 'Vol_Breakout', 'Mean_Reversion_5d', 'Mean_Reversion_20d', 'Reversion_Divergence', 'Volume_Ratio', 'Volume_Price_Trend', 'Volume_Breakout', 'Sharpe_5d', 'Sharpe_20d', 'Sharpe_Ratio', 'Fractal_Efficiency', 'Jump_Score', 'Outlier_Signal', 'Bull_Regime', 'Bear_Regime', 'High_Vol_Regime', 'Price_SMA5_Ratio', 'Price_SMA20_Ratio', 'RSI_Normalized', 'MACD_Histogram', 'BB_Position', 'Returns_Lag1', 'Returns_Lag2', 'Price_Acceleration', 'Month_Effect', 'Quarter_Effect', 'Overall_Sentiment', 'Bullish_Ratio', 'Bearish_Ratio', 'Sentiment_Change', 'Sentiment_Price_Divergence', 'News_Volume']
+2025-08-06 22:40:14,474 - src.models.lstm_predictor - INFO - SIMPLIFIED target engineering: 15-day returns
+2025-08-06 22:40:14,474 - src.models.lstm_predictor - INFO - Target stats - Mean: 0.009102, Std: 0.061980
+2025-08-06 22:40:14,474 - src.models.lstm_predictor - INFO - Target range - Min: -0.123370, Max: 0.123370
+2025-08-06 22:40:14,474 - src.models.lstm_predictor - INFO - 95th percentile used for clipping: 0.123370
+2025-08-06 22:40:14,479 - src.models.lstm_predictor - INFO - Prepared training data: (1224, 30, 43) features, (1224,) targets
+2025-08-06 22:40:14,546 - src.models.lstm_predictor - INFO - Using RobustScaler for target variable (better for financial data)
+2025-08-06 22:40:14,547 - src.models.lstm_predictor - INFO - Pre-scaling target stats - Mean: 0.010110, Std: 0.062171
+2025-08-06 22:40:14,547 - src.models.lstm_predictor - INFO - Pre-scaling target range - Min: -0.123370, Max: 0.123370
+2025-08-06 22:40:14,548 - src.models.lstm_predictor - INFO - Post-scaling target stats - Train mean: -0.033985, Train std: 0.440073
+2025-08-06 22:40:14,548 - src.models.lstm_predictor - INFO - Post-scaling validation - Val mean: 0.044720, Val std: 0.381094
+2025-08-06 22:40:14,548 - src.models.lstm_predictor - INFO - Data splits - Train: 856, Val: 183, Test: 185
+2025-08-06 22:40:14,548 - src.models.lstm_predictor - INFO - Target scaling - Train mean: 0.010110, Train std: 0.062171
+2025-08-06 22:40:14,548 - src.models.lstm_predictor - INFO - Building COMPLEX model with 256 LSTM units and multi-layer architecture
+2025-08-06 22:40:14,693 - src.models.lstm_predictor - INFO - Complex model built: 1,305,281 parameters
+2025-08-06 22:40:14,693 - src.models.lstm_predictor - INFO - Architecture: 3 LSTM layers + 2 attention layers + 3 dense layers
+2025-08-06 22:40:14,693 - src.models.lstm_predictor - INFO - Model architecture: 30 time steps, 43 features
+2025-08-06 22:40:14,693 - src.models.lstm_predictor - INFO - SIMPLIFIED model with conservative parameters for stability
+2025-08-06 22:52:27,109 - src.models.lstm_predictor - WARNING - High validation loss detected: 1.4399 - model may be poor quality
+2025-08-06 22:52:30,698 - src.models.lstm_predictor - ERROR - Model quality validation failed: Validation R² (-0.012) below minimum threshold (0.01)
+2025-08-06 22:52:30,698 - src.models.lstm_predictor - INFO - Cleaning up poor quality model files...
+2025-08-06 23:21:55,198 - src.models.lstm_predictor - INFO - Starting enhanced training for AAPL
+2025-08-06 23:21:55,198 - src.data.collector - INFO - Fetching fresh data for AAPL (5y)
+2025-08-06 23:21:55,819 - src.data.collector - INFO - Running data validation pipeline for AAPL
+2025-08-06 23:21:55,819 - src.data.validator - INFO - Starting validation for AAPL with 1255 rows
+2025-08-06 23:21:55,831 - src.data.validator - INFO - Validation complete for AAPL: 1255 clean rows
+2025-08-06 23:21:55,832 - src.data.validator - INFO - Pipeline complete for AAPL: 1255 -> 1255 rows
+2025-08-06 23:21:55,832 - src.data.collector - INFO - Data pipeline: 1255 -> 1255 rows
+2025-08-06 23:21:56,032 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-06 23:21:56,076 - src.models.lstm_predictor - INFO - Adding comprehensive 5-year historical sentiment features...
+2025-08-06 23:21:56,077 - src.models.lstm_predictor - INFO - Using 5y sentiment analysis for 5.0 years of data
+2025-08-06 23:21:56,077 - src.analysis.sentiment - INFO - Analyzing sentiment for AAPL over 1825 days (5y)
+2025-08-06 23:21:56,077 - src.analysis.sentiment - INFO - Using historical price-based sentiment for 5y period
+2025-08-06 23:21:56,260 - src.analysis.sentiment - INFO - Fetching news sentiment from Alpha Vantage for AAPL
+2025-08-06 23:21:56,524 - src.analysis.sentiment - INFO - Alpha Vantage response keys: ['Information']
+2025-08-06 23:21:56,525 - src.analysis.sentiment - WARNING - No 'feed' key in Alpha Vantage response for AAPL
+2025-08-06 23:21:56,526 - src.analysis.sentiment - WARNING - Unexpected response structure: {'Information': 'We have detected your API key as TROVSB0QXA6N4OFS and our standard API rate limit is 25 requests per day. Please subscribe to any of the premium plans at https://www.alphavantage.co/premium/ to instantly remove all daily rate limits.'}
+2025-08-06 23:21:56,526 - src.analysis.sentiment - INFO - Trying alternative news sources for AAPL
+2025-08-06 23:21:56,758 - src.analysis.sentiment - INFO - yfinance returned 10 news items for AAPL
+2025-08-06 23:21:56,783 - src.analysis.sentiment - INFO - Historical sentiment for AAPL: 0.242 (trend: 0.955, momentum: -0.060, confidence: 1.000, news: 10)
+2025-08-06 23:21:56,788 - src.models.lstm_predictor - INFO - Added 5y sentiment features: avg_sentiment=0.241, confidence=1.000, news_count=10
+2025-08-06 23:21:56,788 - src.models.lstm_predictor - INFO - Adding comprehensive 5-year earnings features for training period...
+2025-08-06 23:21:56,794 - src.models.lstm_predictor - INFO - Requesting 19 earnings periods for 5.0 years of data
+2025-08-06 23:21:56,794 - src.analysis.fundamentals - INFO - Fetching 19 earnings periods for AAPL
+2025-08-06 23:21:57,276 - src.analysis.fundamentals - INFO - Finnhub: Retrieved 3 earnings events
+2025-08-06 23:21:57,277 - src.models.lstm_predictor - INFO - Found 3 earnings events for comprehensive analysis
+2025-08-06 23:21:57,283 - src.models.lstm_predictor - INFO - Added comprehensive earnings features: beat_rate=1.000, avg_surprise=0.073, volatility=0.000
+2025-08-06 23:21:57,300 - src.models.lstm_predictor - INFO - Generated 92 historical features from 1255 data points
+2025-08-06 23:21:57,301 - src.models.lstm_predictor - INFO - Using 43 features for training: ['Momentum_1d', 'Momentum_3d', 'Momentum_5d', 'Momentum_Strength', 'Momentum_Quality', 'Trend_Persistence', 'Trend_Acceleration', 'Multi_Trend_Align', 'Volatility_5d', 'Vol_Ratio', 'Vol_Regime', 'Vol_Breakout', 'Mean_Reversion_5d', 'Mean_Reversion_20d', 'Reversion_Divergence', 'Volume_Ratio', 'Volume_Price_Trend', 'Volume_Breakout', 'Sharpe_5d', 'Sharpe_20d', 'Sharpe_Ratio', 'Fractal_Efficiency', 'Jump_Score', 'Outlier_Signal', 'Bull_Regime', 'Bear_Regime', 'High_Vol_Regime', 'Price_SMA5_Ratio', 'Price_SMA20_Ratio', 'RSI_Normalized', 'MACD_Histogram', 'BB_Position', 'Returns_Lag1', 'Returns_Lag2', 'Price_Acceleration', 'Month_Effect', 'Quarter_Effect', 'Overall_Sentiment', 'Bullish_Ratio', 'Bearish_Ratio', 'Sentiment_Change', 'Sentiment_Price_Divergence', 'News_Volume']
+2025-08-06 23:21:57,306 - src.models.lstm_predictor - INFO - SIMPLIFIED target engineering: 15-day returns
+2025-08-06 23:21:57,306 - src.models.lstm_predictor - INFO - Target stats - Mean: 0.009102, Std: 0.061980
+2025-08-06 23:21:57,306 - src.models.lstm_predictor - INFO - Target range - Min: -0.123370, Max: 0.123370
+2025-08-06 23:21:57,306 - src.models.lstm_predictor - INFO - 95th percentile used for clipping: 0.123370
+2025-08-06 23:21:57,311 - src.models.lstm_predictor - INFO - Prepared training data: (1224, 30, 43) features, (1224,) targets
+2025-08-06 23:21:57,379 - src.models.lstm_predictor - INFO - Using RobustScaler for target variable (better for financial data)
+2025-08-06 23:21:57,379 - src.models.lstm_predictor - INFO - Pre-scaling target stats - Mean: 0.010110, Std: 0.062171
+2025-08-06 23:21:57,379 - src.models.lstm_predictor - INFO - Pre-scaling target range - Min: -0.123370, Max: 0.123370
+2025-08-06 23:21:57,380 - src.models.lstm_predictor - INFO - Post-scaling target stats - Train mean: -0.033986, Train std: 0.440072
+2025-08-06 23:21:57,380 - src.models.lstm_predictor - INFO - Post-scaling validation - Val mean: 0.044719, Val std: 0.381094
+2025-08-06 23:21:57,380 - src.models.lstm_predictor - INFO - Data splits - Train: 856, Val: 183, Test: 185
+2025-08-06 23:21:57,380 - src.models.lstm_predictor - INFO - Target scaling - Train mean: 0.010110, Train std: 0.062171
+2025-08-06 23:21:57,381 - src.models.lstm_predictor - INFO - Building COMPLEX model with 256 LSTM units and multi-layer architecture
+2025-08-06 23:21:57,548 - src.models.lstm_predictor - INFO - Complex model built: 1,305,281 parameters
+2025-08-06 23:21:57,548 - src.models.lstm_predictor - INFO - Architecture: 3 LSTM layers + 2 attention layers + 3 dense layers
+2025-08-06 23:21:57,548 - src.models.lstm_predictor - INFO - Model architecture: 30 time steps, 43 features
+2025-08-06 23:21:57,548 - src.models.lstm_predictor - INFO - SIMPLIFIED model with conservative parameters for stability
+2025-08-06 23:28:38,193 - src.models.lstm_predictor - WARNING - High validation loss detected: 1.2159 - model may be poor quality
+2025-08-06 23:28:41,231 - src.models.lstm_predictor - INFO - Model passed quality validation: Financial metrics passed: 6/7 checks
+✓ Val direction accuracy: 0.596
+✗ Test direction accuracy: 0.465 < 0.52
+✓ Val IC: -0.1638
+✓ Test IC: 0.0484
+✓ Val R²: -0.0999
+✓ Test R²: -0.0330
+✓ No severe overfitting
+2025-08-06 23:28:41,365 - src.models.lstm_predictor - INFO - Metrics saved to data/models/AAPL/AAPL_metrics.json
+2025-08-06 23:28:41,365 - src.models.lstm_predictor - INFO - Enhanced training completed successfully - Quality: Poor ❌
+2025-08-06 23:53:13,246 - src.models.lstm_predictor - INFO - Starting enhanced training for AAPL
+2025-08-06 23:53:13,247 - src.models.lstm_predictor - INFO - Removed existing model file: data/models/AAPL/AAPL_lstm_model.keras
+2025-08-06 23:53:13,249 - src.models.lstm_predictor - INFO - Removed existing model file: data/models/AAPL/AAPL_scaler.pkl
+2025-08-06 23:53:13,250 - src.models.lstm_predictor - INFO - Removed existing model file: data/models/AAPL/AAPL_feature_scaler.pkl
+2025-08-06 23:53:13,289 - src.models.lstm_predictor - INFO - Removed existing model file: data/models/AAPL/AAPL_metrics.json
+2025-08-06 23:53:13,289 - src.data.collector - INFO - Fetching fresh data for AAPL (5y)
+2025-08-06 23:53:13,915 - src.data.collector - INFO - Running data validation pipeline for AAPL
+2025-08-06 23:53:13,915 - src.data.validator - INFO - Starting validation for AAPL with 1255 rows
+2025-08-06 23:53:13,927 - src.data.validator - INFO - Validation complete for AAPL: 1255 clean rows
+2025-08-06 23:53:13,928 - src.data.validator - INFO - Pipeline complete for AAPL: 1255 -> 1255 rows
+2025-08-06 23:53:13,928 - src.data.collector - INFO - Data pipeline: 1255 -> 1255 rows
+2025-08-06 23:53:14,136 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-06 23:53:14,180 - src.models.lstm_predictor - INFO - Adding comprehensive 5-year historical sentiment features...
+2025-08-06 23:53:14,180 - src.models.lstm_predictor - INFO - Using 5y sentiment analysis for 5.0 years of data
+2025-08-06 23:53:14,180 - src.analysis.sentiment - INFO - Analyzing sentiment for AAPL over 1825 days (5y)
+2025-08-06 23:53:14,180 - src.analysis.sentiment - INFO - Using historical price-based sentiment for 5y period
+2025-08-06 23:53:14,381 - src.analysis.sentiment - INFO - Fetching news sentiment from Alpha Vantage for AAPL
+2025-08-06 23:53:14,588 - src.analysis.sentiment - INFO - Alpha Vantage response keys: ['Information']
+2025-08-06 23:53:14,588 - src.analysis.sentiment - WARNING - No 'feed' key in Alpha Vantage response for AAPL
+2025-08-06 23:53:14,588 - src.analysis.sentiment - WARNING - Unexpected response structure: {'Information': 'We have detected your API key as TROVSB0QXA6N4OFS and our standard API rate limit is 25 requests per day. Please subscribe to any of the premium plans at https://www.alphavantage.co/premium/ to instantly remove all daily rate limits.'}
+2025-08-06 23:53:14,588 - src.analysis.sentiment - INFO - Trying alternative news sources for AAPL
+2025-08-06 23:53:14,824 - src.analysis.sentiment - INFO - yfinance returned 10 news items for AAPL
+2025-08-06 23:53:14,855 - src.analysis.sentiment - INFO - Historical sentiment for AAPL: 0.242 (trend: 0.955, momentum: -0.060, confidence: 1.000, news: 10)
+2025-08-06 23:53:14,858 - src.models.lstm_predictor - INFO - Added 5y sentiment features: avg_sentiment=0.241, confidence=1.000, news_count=10
+2025-08-06 23:53:14,858 - src.models.lstm_predictor - INFO - Adding comprehensive 5-year earnings features for training period...
+2025-08-06 23:53:14,863 - src.models.lstm_predictor - INFO - Requesting 19 earnings periods for 5.0 years of data
+2025-08-06 23:53:14,863 - src.analysis.fundamentals - INFO - Fetching 19 earnings periods for AAPL
+2025-08-06 23:53:15,358 - src.analysis.fundamentals - INFO - Finnhub: Retrieved 3 earnings events
+2025-08-06 23:53:15,361 - src.models.lstm_predictor - INFO - Found 3 earnings events for comprehensive analysis
+2025-08-06 23:53:15,374 - src.models.lstm_predictor - INFO - Added comprehensive earnings features: beat_rate=1.000, avg_surprise=0.073, volatility=0.000
+2025-08-06 23:53:15,400 - src.models.lstm_predictor - INFO - Generated 92 historical features from 1255 data points
+2025-08-06 23:53:15,400 - src.models.lstm_predictor - INFO - Using 43 features for training: ['Momentum_1d', 'Momentum_3d', 'Momentum_5d', 'Momentum_Strength', 'Momentum_Quality', 'Trend_Persistence', 'Trend_Acceleration', 'Multi_Trend_Align', 'Volatility_5d', 'Vol_Ratio', 'Vol_Regime', 'Vol_Breakout', 'Mean_Reversion_5d', 'Mean_Reversion_20d', 'Reversion_Divergence', 'Volume_Ratio', 'Volume_Price_Trend', 'Volume_Breakout', 'Sharpe_5d', 'Sharpe_20d', 'Sharpe_Ratio', 'Fractal_Efficiency', 'Jump_Score', 'Outlier_Signal', 'Bull_Regime', 'Bear_Regime', 'High_Vol_Regime', 'Price_SMA5_Ratio', 'Price_SMA20_Ratio', 'RSI_Normalized', 'MACD_Histogram', 'BB_Position', 'Returns_Lag1', 'Returns_Lag2', 'Price_Acceleration', 'Month_Effect', 'Quarter_Effect', 'Overall_Sentiment', 'Bullish_Ratio', 'Bearish_Ratio', 'Sentiment_Change', 'Sentiment_Price_Divergence', 'News_Volume']
+2025-08-06 23:53:15,404 - src.models.lstm_predictor - INFO - SIMPLIFIED target engineering: 15-day returns
+2025-08-06 23:53:15,404 - src.models.lstm_predictor - INFO - Target stats - Mean: 0.009102, Std: 0.061980
+2025-08-06 23:53:15,404 - src.models.lstm_predictor - INFO - Target range - Min: -0.123370, Max: 0.123370
+2025-08-06 23:53:15,404 - src.models.lstm_predictor - INFO - 95th percentile used for clipping: 0.123370
+2025-08-06 23:53:15,408 - src.models.lstm_predictor - INFO - Prepared training data: (1224, 30, 43) features, (1224,) targets
+2025-08-06 23:53:15,477 - src.models.lstm_predictor - INFO - Using RobustScaler for target variable (better for financial data)
+2025-08-06 23:53:15,478 - src.models.lstm_predictor - INFO - Pre-scaling target stats - Mean: 0.010110, Std: 0.062171
+2025-08-06 23:53:15,478 - src.models.lstm_predictor - INFO - Pre-scaling target range - Min: -0.123370, Max: 0.123370
+2025-08-06 23:53:15,478 - src.models.lstm_predictor - INFO - Post-scaling target stats - Train mean: -0.033985, Train std: 0.440073
+2025-08-06 23:53:15,478 - src.models.lstm_predictor - INFO - Post-scaling validation - Val mean: 0.044721, Val std: 0.381094
+2025-08-06 23:53:15,478 - src.models.lstm_predictor - INFO - Data splits - Train: 856, Val: 183, Test: 185
+2025-08-06 23:53:15,478 - src.models.lstm_predictor - INFO - Target scaling - Train mean: 0.010110, Train std: 0.062171
+2025-08-06 23:53:15,478 - src.models.lstm_predictor - INFO - Building COMPLEX model with 256 LSTM units and multi-layer architecture
+2025-08-06 23:53:15,635 - src.models.lstm_predictor - INFO - Complex model built: 1,308,503 parameters
+2025-08-06 23:53:15,635 - src.models.lstm_predictor - INFO - Architecture: 3 LSTM layers + 2 attention layers + 3 dense layers
+2025-08-06 23:53:15,635 - src.models.lstm_predictor - INFO - Model architecture: 30 time steps, 43 features
+2025-08-06 23:53:15,635 - src.models.lstm_predictor - INFO - SIMPLIFIED model with conservative parameters for stability
+2025-08-06 23:57:49,832 - src.models.lstm_predictor - WARNING - High validation loss detected: 7.3623 - model may be poor quality
+2025-08-06 23:57:52,756 - src.models.lstm_predictor - ERROR - Model quality validation failed: Financial metrics failed: 2/7 checks
+✗ Val direction accuracy: 0.415 < 0.52
+✗ Test direction accuracy: 0.422 < 0.52
+✗ Val IC: -0.0043 < 0.02
+✓ Test IC: -0.1121
+✗ Val R²: -0.5179 < -0.1
+✗ Test R²: -0.3416 < -0.1
+✓ No severe overfitting
+2025-08-06 23:57:52,756 - src.models.lstm_predictor - INFO - Cleaning up poor quality model files...
+2025-08-07 00:03:30,895 - src.models.lstm_predictor - INFO - Starting enhanced training for AAPL
+2025-08-07 00:03:30,895 - src.data.collector - INFO - Fetching fresh data for AAPL (5y)
+2025-08-07 00:03:31,552 - src.data.collector - INFO - Running data validation pipeline for AAPL
+2025-08-07 00:03:31,552 - src.data.validator - INFO - Starting validation for AAPL with 1255 rows
+2025-08-07 00:03:31,562 - src.data.validator - INFO - Validation complete for AAPL: 1255 clean rows
+2025-08-07 00:03:31,562 - src.data.validator - INFO - Pipeline complete for AAPL: 1255 -> 1255 rows
+2025-08-07 00:03:31,562 - src.data.collector - INFO - Data pipeline: 1255 -> 1255 rows
+2025-08-07 00:03:31,774 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-07 00:03:31,802 - src.models.lstm_predictor - INFO - Adding comprehensive 5-year historical sentiment features...
+2025-08-07 00:03:31,802 - src.models.lstm_predictor - INFO - Using 5y sentiment analysis for 5.0 years of data
+2025-08-07 00:03:31,802 - src.analysis.sentiment - INFO - Analyzing sentiment for AAPL over 1825 days (5y)
+2025-08-07 00:03:31,802 - src.analysis.sentiment - INFO - Using historical price-based sentiment for 5y period
+2025-08-07 00:03:32,006 - src.analysis.sentiment - INFO - Fetching news sentiment from Alpha Vantage for AAPL
+2025-08-07 00:03:32,432 - src.analysis.sentiment - INFO - Alpha Vantage response keys: ['items', 'sentiment_score_definition', 'relevance_score_definition', 'feed']
+2025-08-07 00:03:32,432 - src.analysis.sentiment - INFO - Found 50 news items
+2025-08-07 00:03:32,435 - src.analysis.sentiment - INFO - Historical sentiment for AAPL: 0.304 (trend: 0.955, momentum: -0.060, confidence: 1.000, news: 50)
+2025-08-07 00:03:32,441 - src.models.lstm_predictor - INFO - Added 5y sentiment features: avg_sentiment=0.303, confidence=1.000, news_count=50
+2025-08-07 00:03:32,441 - src.models.lstm_predictor - INFO - Adding comprehensive 5-year earnings features for training period...
+2025-08-07 00:03:32,448 - src.models.lstm_predictor - INFO - Requesting 19 earnings periods for 5.0 years of data
+2025-08-07 00:03:32,448 - src.analysis.fundamentals - INFO - Fetching 19 earnings periods for AAPL
+2025-08-07 00:03:32,637 - src.analysis.fundamentals - INFO - Alpha Vantage: Retrieved 19 earnings events
+2025-08-07 00:03:32,640 - src.models.lstm_predictor - INFO - Found 19 earnings events for comprehensive analysis
+2025-08-07 00:03:32,654 - src.models.lstm_predictor - INFO - Added comprehensive earnings features: beat_rate=0.789, avg_surprise=0.086, volatility=0.109
+2025-08-07 00:03:32,682 - src.models.lstm_predictor - INFO - Generated 92 historical features from 1255 data points
+2025-08-07 00:03:32,682 - src.models.lstm_predictor - INFO - Using 46 features for training: ['Momentum_1d', 'Momentum_3d', 'Momentum_5d', 'Momentum_Strength', 'Momentum_Quality', 'Trend_Persistence', 'Trend_Acceleration', 'Multi_Trend_Align', 'Volatility_5d', 'Vol_Ratio', 'Vol_Regime', 'Vol_Breakout', 'Mean_Reversion_5d', 'Mean_Reversion_20d', 'Reversion_Divergence', 'Volume_Ratio', 'Volume_Price_Trend', 'Volume_Breakout', 'Sharpe_5d', 'Sharpe_20d', 'Sharpe_Ratio', 'Fractal_Efficiency', 'Jump_Score', 'Outlier_Signal', 'Bull_Regime', 'Bear_Regime', 'High_Vol_Regime', 'Price_SMA5_Ratio', 'Price_SMA20_Ratio', 'RSI_Normalized', 'MACD_Histogram', 'BB_Position', 'Returns_Lag1', 'Returns_Lag2', 'Price_Acceleration', 'Overall_Sentiment', 'Bullish_Ratio', 'Bearish_Ratio', 'Sentiment_Change', 'Sentiment_Price_Divergence', 'News_Volume', 'Earnings_Beat_History', 'Earnings_Surprise_Avg', 'Recent_Earnings_Trend', 'Month_Effect', 'Quarter_Effect']
+2025-08-07 00:03:32,687 - src.models.lstm_predictor - WARNING - Removing zero-variance features: ['News_Volume', 'Earnings_Surprise_Avg', 'Recent_Earnings_Trend']
+2025-08-07 00:03:32,690 - src.models.lstm_predictor - INFO - ENHANCED target engineering: 15-day movement prediction
+2025-08-07 00:03:32,690 - src.models.lstm_predictor - INFO - Target stats - Mean: 0.009203, Std: 0.063157
+2025-08-07 00:03:32,690 - src.models.lstm_predictor - INFO - Target range - Min: -0.139623, Max: 0.139623
+2025-08-07 00:03:32,690 - src.models.lstm_predictor - INFO - 98th percentile used for clipping: 0.139623
+2025-08-07 00:03:32,695 - src.models.lstm_predictor - INFO - Prepared training data: (1224, 30, 43) features, (1224,) targets
+2025-08-07 00:03:32,765 - src.models.lstm_predictor - INFO - Using RobustScaler for target variable (better for financial data)
+2025-08-07 00:03:32,766 - src.models.lstm_predictor - INFO - Pre-scaling target stats - Mean: 0.010287, Std: 0.063084
+2025-08-07 00:03:32,766 - src.models.lstm_predictor - INFO - Pre-scaling target range - Min: -0.139623, Max: 0.139623
+2025-08-07 00:03:32,767 - src.models.lstm_predictor - INFO - Post-scaling target stats - Train mean: -0.032824, Train std: 0.445722
+2025-08-07 00:03:32,767 - src.models.lstm_predictor - INFO - Post-scaling validation - Val mean: 0.047468, Val std: 0.386622
+2025-08-07 00:03:32,767 - src.models.lstm_predictor - INFO - Data splits - Train: 856, Val: 183, Test: 185
+2025-08-07 00:03:32,767 - src.models.lstm_predictor - INFO - Target scaling - Train mean: 0.010287, Train std: 0.063084
+2025-08-07 00:03:32,767 - src.models.lstm_predictor - INFO - Building COMPLEX model with 256 LSTM units and multi-layer architecture
+2025-08-07 00:03:32,935 - src.models.lstm_predictor - INFO - Complex model built: 1,308,503 parameters
+2025-08-07 00:03:32,935 - src.models.lstm_predictor - INFO - Architecture: 3 LSTM layers + 2 attention layers + 3 dense layers
+2025-08-07 00:03:32,935 - src.models.lstm_predictor - INFO - Optimizer: Adam with lr=0.000375, clipnorm=1.0, amsgrad=True
+2025-08-07 00:03:32,935 - src.models.lstm_predictor - INFO - Model architecture: 30 time steps, 43 features
+2025-08-07 00:03:32,935 - src.models.lstm_predictor - INFO - SIMPLIFIED model with conservative parameters for stability
+2025-08-07 00:07:46,522 - src.models.lstm_predictor - WARNING - High validation loss detected: 5.0193 - model may be poor quality
+2025-08-07 00:07:49,580 - src.models.lstm_predictor - INFO - Model passed quality validation: Financial metrics passed: 6/7 checks
+✓ Val direction accuracy: 0.546
+✗ Test direction accuracy: 0.389 < 0.51
+✓ Val IC: -0.0755
+✓ Test IC: 0.0312
+✓ Val R²: -0.1926
+✓ Test R²: -0.0242
+✓ No severe overfitting
+2025-08-07 00:07:49,695 - src.models.lstm_predictor - INFO - Metrics saved to data/models/AAPL/AAPL_metrics.json
+2025-08-07 00:07:49,695 - src.models.lstm_predictor - INFO - Enhanced training completed successfully - Quality: Poor ❌
+2025-08-07 00:14:26,416 - src.models.lstm_predictor - INFO - Starting enhanced training for AAPL
+2025-08-07 00:14:26,419 - src.models.lstm_predictor - INFO - Removed existing model file: data/models/AAPL/AAPL_lstm_model.keras
+2025-08-07 00:14:26,420 - src.models.lstm_predictor - INFO - Removed existing model file: data/models/AAPL/AAPL_scaler.pkl
+2025-08-07 00:14:26,421 - src.models.lstm_predictor - INFO - Removed existing model file: data/models/AAPL/AAPL_feature_scaler.pkl
+2025-08-07 00:14:26,430 - src.models.lstm_predictor - INFO - Removed existing model file: data/models/AAPL/AAPL_metrics.json
+2025-08-07 00:14:26,430 - src.data.collector - INFO - Fetching fresh data for AAPL (5y)
+2025-08-07 00:14:27,045 - src.data.collector - INFO - Running data validation pipeline for AAPL
+2025-08-07 00:14:27,045 - src.data.validator - INFO - Starting validation for AAPL with 1255 rows
+2025-08-07 00:14:27,057 - src.data.validator - INFO - Validation complete for AAPL: 1255 clean rows
+2025-08-07 00:14:27,058 - src.data.validator - INFO - Pipeline complete for AAPL: 1255 -> 1255 rows
+2025-08-07 00:14:27,058 - src.data.collector - INFO - Data pipeline: 1255 -> 1255 rows
+2025-08-07 00:14:27,278 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-07 00:14:27,320 - src.models.lstm_predictor - INFO - Adding comprehensive 5-year historical sentiment features...
+2025-08-07 00:14:27,320 - src.models.lstm_predictor - INFO - Using 5y sentiment analysis for 5.0 years of data
+2025-08-07 00:14:27,320 - src.analysis.sentiment - INFO - Analyzing sentiment for AAPL over 1825 days (5y)
+2025-08-07 00:14:27,320 - src.analysis.sentiment - INFO - Using historical price-based sentiment for 5y period
+2025-08-07 00:14:27,493 - src.analysis.sentiment - INFO - Fetching news sentiment from Alpha Vantage for AAPL
+2025-08-07 00:14:27,870 - src.analysis.sentiment - INFO - Alpha Vantage response keys: ['items', 'sentiment_score_definition', 'relevance_score_definition', 'feed']
+2025-08-07 00:14:27,870 - src.analysis.sentiment - INFO - Found 50 news items
+2025-08-07 00:14:27,871 - src.analysis.sentiment - INFO - Historical sentiment for AAPL: 0.304 (trend: 0.955, momentum: -0.060, confidence: 1.000, news: 50)
+2025-08-07 00:14:27,874 - src.models.lstm_predictor - INFO - Added 5y sentiment features: avg_sentiment=0.303, confidence=1.000, news_count=50
+2025-08-07 00:14:27,874 - src.models.lstm_predictor - INFO - Adding comprehensive 5-year earnings features for training period...
+2025-08-07 00:14:27,879 - src.models.lstm_predictor - INFO - Requesting 19 earnings periods for 5.0 years of data
+2025-08-07 00:14:27,879 - src.analysis.fundamentals - INFO - Fetching 19 earnings periods for AAPL
+2025-08-07 00:14:28,037 - src.analysis.fundamentals - INFO - Alpha Vantage: Retrieved 19 earnings events
+2025-08-07 00:14:28,039 - src.models.lstm_predictor - INFO - Found 19 earnings events for comprehensive analysis
+2025-08-07 00:14:28,047 - src.models.lstm_predictor - INFO - Added comprehensive earnings features: beat_rate=0.789, avg_surprise=0.086, volatility=0.109
+2025-08-07 00:14:28,067 - src.models.lstm_predictor - INFO - Generated 92 historical features from 1255 data points
+2025-08-07 00:14:28,067 - src.models.lstm_predictor - INFO - Using 46 features for training: ['Momentum_1d', 'Momentum_3d', 'Momentum_5d', 'Momentum_Strength', 'Momentum_Quality', 'Trend_Persistence', 'Trend_Acceleration', 'Multi_Trend_Align', 'Volatility_5d', 'Vol_Ratio', 'Vol_Regime', 'Vol_Breakout', 'Mean_Reversion_5d', 'Mean_Reversion_20d', 'Reversion_Divergence', 'Volume_Ratio', 'Volume_Price_Trend', 'Volume_Breakout', 'Sharpe_5d', 'Sharpe_20d', 'Sharpe_Ratio', 'Fractal_Efficiency', 'Jump_Score', 'Outlier_Signal', 'Bull_Regime', 'Bear_Regime', 'High_Vol_Regime', 'Price_SMA5_Ratio', 'Price_SMA20_Ratio', 'RSI_Normalized', 'MACD_Histogram', 'BB_Position', 'Returns_Lag1', 'Returns_Lag2', 'Price_Acceleration', 'Overall_Sentiment', 'Bullish_Ratio', 'Bearish_Ratio', 'Sentiment_Change', 'Sentiment_Price_Divergence', 'News_Volume', 'Earnings_Beat_History', 'Earnings_Surprise_Avg', 'Recent_Earnings_Trend', 'Month_Effect', 'Quarter_Effect']
+2025-08-07 00:14:28,071 - src.models.lstm_predictor - WARNING - Removing zero-variance features: ['News_Volume', 'Earnings_Surprise_Avg', 'Recent_Earnings_Trend']
+2025-08-07 00:14:28,073 - src.models.lstm_predictor - INFO - ENHANCED target engineering: 15-day movement prediction
+2025-08-07 00:14:28,073 - src.models.lstm_predictor - INFO - Target stats - Mean: 0.009203, Std: 0.063157
+2025-08-07 00:14:28,073 - src.models.lstm_predictor - INFO - Target range - Min: -0.139623, Max: 0.139623
+2025-08-07 00:14:28,073 - src.models.lstm_predictor - INFO - 98th percentile used for clipping: 0.139623
+2025-08-07 00:14:28,078 - src.models.lstm_predictor - INFO - Prepared training data: (1224, 30, 43) features, (1224,) targets
+2025-08-07 00:14:28,145 - src.models.lstm_predictor - INFO - Using RobustScaler for target variable (better for financial data)
+2025-08-07 00:14:28,145 - src.models.lstm_predictor - INFO - Pre-scaling target stats - Mean: 0.010287, Std: 0.063084
+2025-08-07 00:14:28,145 - src.models.lstm_predictor - INFO - Pre-scaling target range - Min: -0.139623, Max: 0.139623
+2025-08-07 00:14:28,145 - src.models.lstm_predictor - INFO - Post-scaling target stats - Train mean: -0.032823, Train std: 0.445722
+2025-08-07 00:14:28,145 - src.models.lstm_predictor - INFO - Post-scaling validation - Val mean: 0.047469, Val std: 0.386622
+2025-08-07 00:14:28,145 - src.models.lstm_predictor - INFO - Data splits - Train: 856, Val: 183, Test: 185
+2025-08-07 00:14:28,145 - src.models.lstm_predictor - INFO - Target scaling - Train mean: 0.010287, Train std: 0.063084
+2025-08-07 00:14:28,146 - src.models.lstm_predictor - INFO - Building COMPLEX model with 256 LSTM units and multi-layer architecture
+2025-08-07 00:14:28,306 - src.models.lstm_predictor - INFO - Complex model built: 1,308,503 parameters
+2025-08-07 00:14:28,306 - src.models.lstm_predictor - INFO - Architecture: 3 LSTM layers + 2 attention layers + 3 dense layers
+2025-08-07 00:14:28,306 - src.models.lstm_predictor - INFO - Optimizer: Adam with lr=0.000375, clipnorm=1.0, amsgrad=True
+2025-08-07 00:14:28,306 - src.models.lstm_predictor - INFO - Model architecture: 30 time steps, 43 features
+2025-08-07 00:14:28,306 - src.models.lstm_predictor - INFO - SIMPLIFIED model with conservative parameters for stability
+2025-08-07 00:16:43,880 - src.models.lstm_predictor - WARNING - High validation loss detected: 6.9857 - model may be poor quality
+2025-08-07 00:16:46,714 - src.models.lstm_predictor - INFO - Model passed quality validation: Financial metrics passed: 4/7 checks
+✗ Val direction accuracy: 0.503 < 0.51
+✗ Test direction accuracy: 0.497 < 0.51
+✓ Val IC: -0.1120
+✓ Test IC: -0.0261
+✗ Val R²: -0.3248 < -0.2
+✓ Test R²: -0.1754
+✓ No severe overfitting
+2025-08-07 00:16:46,829 - src.models.lstm_predictor - INFO - Metrics saved to data/models/AAPL/AAPL_metrics.json
+2025-08-07 00:16:46,829 - src.models.lstm_predictor - INFO - Enhanced training completed successfully - Quality: Poor ❌
+2025-08-07 00:19:38,789 - src.models.lstm_predictor - INFO - Starting enhanced training for AAPL
+2025-08-07 00:19:38,791 - src.models.lstm_predictor - INFO - Removed existing model file: data/models/AAPL/AAPL_lstm_model.keras
+2025-08-07 00:19:38,792 - src.models.lstm_predictor - INFO - Removed existing model file: data/models/AAPL/AAPL_scaler.pkl
+2025-08-07 00:19:38,793 - src.models.lstm_predictor - INFO - Removed existing model file: data/models/AAPL/AAPL_feature_scaler.pkl
+2025-08-07 00:19:38,809 - src.models.lstm_predictor - INFO - Removed existing model file: data/models/AAPL/AAPL_metrics.json
+2025-08-07 00:19:38,809 - src.data.collector - INFO - Fetching fresh data for AAPL (5y)
+2025-08-07 00:19:39,410 - src.data.collector - INFO - Running data validation pipeline for AAPL
+2025-08-07 00:19:39,410 - src.data.validator - INFO - Starting validation for AAPL with 1255 rows
+2025-08-07 00:19:39,422 - src.data.validator - INFO - Validation complete for AAPL: 1255 clean rows
+2025-08-07 00:19:39,423 - src.data.validator - INFO - Pipeline complete for AAPL: 1255 -> 1255 rows
+2025-08-07 00:19:39,423 - src.data.collector - INFO - Data pipeline: 1255 -> 1255 rows
+2025-08-07 00:19:39,635 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-07 00:19:39,659 - src.models.lstm_predictor - INFO - Adding comprehensive 5-year historical sentiment features...
+2025-08-07 00:19:39,659 - src.models.lstm_predictor - INFO - Using 5y sentiment analysis for 5.0 years of data
+2025-08-07 00:19:39,659 - src.analysis.sentiment - INFO - Analyzing sentiment for AAPL over 1825 days (5y)
+2025-08-07 00:19:39,659 - src.analysis.sentiment - INFO - Using historical price-based sentiment for 5y period
+2025-08-07 00:19:39,831 - src.analysis.sentiment - INFO - Fetching news sentiment from Alpha Vantage for AAPL
+2025-08-07 00:19:40,140 - src.analysis.sentiment - INFO - Alpha Vantage response keys: ['items', 'sentiment_score_definition', 'relevance_score_definition', 'feed']
+2025-08-07 00:19:40,141 - src.analysis.sentiment - INFO - Found 50 news items
+2025-08-07 00:19:40,144 - src.analysis.sentiment - INFO - Historical sentiment for AAPL: 0.304 (trend: 0.955, momentum: -0.060, confidence: 1.000, news: 50)
+2025-08-07 00:19:40,151 - src.models.lstm_predictor - INFO - Added 5y sentiment features: avg_sentiment=0.303, confidence=1.000, news_count=50
+2025-08-07 00:19:40,151 - src.models.lstm_predictor - INFO - Adding comprehensive 5-year earnings features for training period...
+2025-08-07 00:19:40,162 - src.models.lstm_predictor - INFO - Requesting 19 earnings periods for 5.0 years of data
+2025-08-07 00:19:40,162 - src.analysis.fundamentals - INFO - Fetching 19 earnings periods for AAPL
+2025-08-07 00:19:40,338 - src.analysis.fundamentals - INFO - Alpha Vantage: Retrieved 19 earnings events
+2025-08-07 00:19:40,339 - src.models.lstm_predictor - INFO - Found 19 earnings events for comprehensive analysis
+2025-08-07 00:19:40,344 - src.models.lstm_predictor - INFO - Added comprehensive earnings features: beat_rate=0.789, avg_surprise=0.086, volatility=0.109
+2025-08-07 00:19:40,358 - src.models.lstm_predictor - INFO - Generated 92 historical features from 1255 data points
+2025-08-07 00:19:40,358 - src.models.lstm_predictor - INFO - Using 46 features for training: ['Momentum_1d', 'Momentum_3d', 'Momentum_5d', 'Momentum_Strength', 'Momentum_Quality', 'Trend_Persistence', 'Trend_Acceleration', 'Multi_Trend_Align', 'Volatility_5d', 'Vol_Ratio', 'Vol_Regime', 'Vol_Breakout', 'Mean_Reversion_5d', 'Mean_Reversion_20d', 'Reversion_Divergence', 'Volume_Ratio', 'Volume_Price_Trend', 'Volume_Breakout', 'Sharpe_5d', 'Sharpe_20d', 'Sharpe_Ratio', 'Fractal_Efficiency', 'Jump_Score', 'Outlier_Signal', 'Bull_Regime', 'Bear_Regime', 'High_Vol_Regime', 'Price_SMA5_Ratio', 'Price_SMA20_Ratio', 'RSI_Normalized', 'MACD_Histogram', 'BB_Position', 'Returns_Lag1', 'Returns_Lag2', 'Price_Acceleration', 'Overall_Sentiment', 'Bullish_Ratio', 'Bearish_Ratio', 'Sentiment_Change', 'Sentiment_Price_Divergence', 'News_Volume', 'Earnings_Beat_History', 'Earnings_Surprise_Avg', 'Recent_Earnings_Trend', 'Month_Effect', 'Quarter_Effect']
+2025-08-07 00:19:40,362 - src.models.lstm_predictor - WARNING - Removing zero-variance features: ['News_Volume', 'Earnings_Surprise_Avg', 'Recent_Earnings_Trend']
+2025-08-07 00:19:40,364 - src.models.lstm_predictor - INFO - ENHANCED target engineering: 15-day movement prediction
+2025-08-07 00:19:40,364 - src.models.lstm_predictor - INFO - Target stats - Mean: 0.009203, Std: 0.063157
+2025-08-07 00:19:40,364 - src.models.lstm_predictor - INFO - Target range - Min: -0.139623, Max: 0.139623
+2025-08-07 00:19:40,364 - src.models.lstm_predictor - INFO - 98th percentile used for clipping: 0.139623
+2025-08-07 00:19:40,368 - src.models.lstm_predictor - INFO - Prepared training data: (1224, 30, 43) features, (1224,) targets
+2025-08-07 00:19:40,441 - src.models.lstm_predictor - INFO - Using RobustScaler for target variable (better for financial data)
+2025-08-07 00:19:40,442 - src.models.lstm_predictor - INFO - Pre-scaling target stats - Mean: 0.010287, Std: 0.063084
+2025-08-07 00:19:40,442 - src.models.lstm_predictor - INFO - Pre-scaling target range - Min: -0.139623, Max: 0.139623
+2025-08-07 00:19:40,442 - src.models.lstm_predictor - INFO - Post-scaling target stats - Train mean: -0.032824, Train std: 0.445721
+2025-08-07 00:19:40,442 - src.models.lstm_predictor - INFO - Post-scaling validation - Val mean: 0.047468, Val std: 0.386621
+2025-08-07 00:19:40,442 - src.models.lstm_predictor - INFO - Data splits - Train: 856, Val: 183, Test: 185
+2025-08-07 00:19:40,442 - src.models.lstm_predictor - INFO - Target scaling - Train mean: 0.010287, Train std: 0.063084
+2025-08-07 00:19:40,442 - src.models.lstm_predictor - INFO - Building COMPLEX model with 256 LSTM units and multi-layer architecture
+2025-08-07 00:19:40,603 - src.models.lstm_predictor - INFO - Complex model built: 1,308,503 parameters
+2025-08-07 00:19:40,603 - src.models.lstm_predictor - INFO - Architecture: 3 LSTM layers + 2 attention layers + 3 dense layers
+2025-08-07 00:19:40,603 - src.models.lstm_predictor - INFO - Optimizer: Adam with lr=0.000375, clipnorm=1.0, amsgrad=True
+2025-08-07 00:19:40,603 - src.models.lstm_predictor - INFO - Model architecture: 30 time steps, 43 features
+2025-08-07 00:19:40,603 - src.models.lstm_predictor - INFO - SIMPLIFIED model with conservative parameters for stability
+2025-08-07 00:20:33,996 - src.models.lstm_predictor - WARNING - High validation loss detected: 71.2794 - model may be poor quality
+2025-08-07 00:20:37,444 - src.models.lstm_predictor - INFO - Model passed quality validation: Financial metrics passed: 4/7 checks
+✓ Val direction accuracy: 0.672
+✗ Test direction accuracy: 0.373 < 0.51
+✓ Val IC: 0.2357
+✓ Test IC: -0.1586
+✗ Val R²: -3.7106 < -0.2
+✗ Test R²: -2.6539 < -0.2
+✓ No severe overfitting
+2025-08-07 00:20:37,610 - src.models.lstm_predictor - INFO - Metrics saved to data/models/AAPL/AAPL_metrics.json
+2025-08-07 00:20:37,610 - src.models.lstm_predictor - INFO - Enhanced training completed successfully - Quality: Poor ❌
+2025-08-07 00:30:06,626 - src.models.lstm_predictor - INFO - Starting enhanced training for AAPL
+2025-08-07 00:30:06,628 - src.models.lstm_predictor - INFO - Removed existing model file: data/models/AAPL/AAPL_lstm_model.keras
+2025-08-07 00:30:06,629 - src.models.lstm_predictor - INFO - Removed existing model file: data/models/AAPL/AAPL_scaler.pkl
+2025-08-07 00:30:06,629 - src.models.lstm_predictor - INFO - Removed existing model file: data/models/AAPL/AAPL_feature_scaler.pkl
+2025-08-07 00:30:06,639 - src.models.lstm_predictor - INFO - Removed existing model file: data/models/AAPL/AAPL_metrics.json
+2025-08-07 00:30:06,639 - src.data.collector - INFO - Fetching fresh data for AAPL (5y)
+2025-08-07 00:30:07,372 - src.data.collector - INFO - Running data validation pipeline for AAPL
+2025-08-07 00:30:07,372 - src.data.validator - INFO - Starting validation for AAPL with 1255 rows
+2025-08-07 00:30:07,386 - src.data.validator - INFO - Validation complete for AAPL: 1255 clean rows
+2025-08-07 00:30:07,387 - src.data.validator - INFO - Pipeline complete for AAPL: 1255 -> 1255 rows
+2025-08-07 00:30:07,387 - src.data.collector - INFO - Data pipeline: 1255 -> 1255 rows
+2025-08-07 00:30:07,604 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-07 00:30:07,635 - src.models.lstm_predictor - INFO - Adding comprehensive 5-year historical sentiment features...
+2025-08-07 00:30:07,635 - src.models.lstm_predictor - INFO - Using 5y sentiment analysis for 5.0 years of data
+2025-08-07 00:30:07,635 - src.analysis.sentiment - INFO - Analyzing sentiment for AAPL over 1825 days (5y)
+2025-08-07 00:30:07,635 - src.analysis.sentiment - INFO - Using historical price-based sentiment for 5y period
+2025-08-07 00:30:07,782 - src.analysis.sentiment - INFO - Fetching news sentiment from Alpha Vantage for AAPL
+2025-08-07 00:30:08,140 - src.analysis.sentiment - INFO - Alpha Vantage response keys: ['items', 'sentiment_score_definition', 'relevance_score_definition', 'feed']
+2025-08-07 00:30:08,140 - src.analysis.sentiment - INFO - Found 50 news items
+2025-08-07 00:30:08,143 - src.analysis.sentiment - INFO - Historical sentiment for AAPL: 0.304 (trend: 0.955, momentum: -0.060, confidence: 1.000, news: 50)
+2025-08-07 00:30:08,148 - src.models.lstm_predictor - INFO - Added 5y sentiment features: avg_sentiment=0.303, confidence=1.000, news_count=50
+2025-08-07 00:30:08,148 - src.models.lstm_predictor - INFO - Adding comprehensive 5-year earnings features for training period...
+2025-08-07 00:30:08,156 - src.models.lstm_predictor - INFO - Requesting 19 earnings periods for 5.0 years of data
+2025-08-07 00:30:08,156 - src.analysis.fundamentals - INFO - Fetching 19 earnings periods for AAPL
+2025-08-07 00:30:08,318 - src.analysis.fundamentals - INFO - Alpha Vantage: Retrieved 19 earnings events
+2025-08-07 00:30:08,323 - src.models.lstm_predictor - INFO - Found 19 earnings events for comprehensive analysis
+2025-08-07 00:30:08,338 - src.models.lstm_predictor - INFO - Added comprehensive earnings features: beat_rate=0.789, avg_surprise=0.086, volatility=0.109
+2025-08-07 00:30:08,363 - src.models.lstm_predictor - INFO - Generated 92 historical features from 1255 data points
+2025-08-07 00:30:08,363 - src.models.lstm_predictor - INFO - Using 46 features for training: ['Momentum_1d', 'Momentum_3d', 'Momentum_5d', 'Momentum_Strength', 'Momentum_Quality', 'Trend_Persistence', 'Trend_Acceleration', 'Multi_Trend_Align', 'Volatility_5d', 'Vol_Ratio', 'Vol_Regime', 'Vol_Breakout', 'Mean_Reversion_5d', 'Mean_Reversion_20d', 'Reversion_Divergence', 'Volume_Ratio', 'Volume_Price_Trend', 'Volume_Breakout', 'Sharpe_5d', 'Sharpe_20d', 'Sharpe_Ratio', 'Fractal_Efficiency', 'Jump_Score', 'Outlier_Signal', 'Bull_Regime', 'Bear_Regime', 'High_Vol_Regime', 'Price_SMA5_Ratio', 'Price_SMA20_Ratio', 'RSI_Normalized', 'MACD_Histogram', 'BB_Position', 'Returns_Lag1', 'Returns_Lag2', 'Price_Acceleration', 'Overall_Sentiment', 'Bullish_Ratio', 'Bearish_Ratio', 'Sentiment_Change', 'Sentiment_Price_Divergence', 'News_Volume', 'Earnings_Beat_History', 'Earnings_Surprise_Avg', 'Recent_Earnings_Trend', 'Month_Effect', 'Quarter_Effect']
+2025-08-07 00:30:08,367 - src.models.lstm_predictor - WARNING - Removing zero-variance features: ['News_Volume', 'Earnings_Surprise_Avg', 'Recent_Earnings_Trend']
+2025-08-07 00:30:08,369 - src.models.lstm_predictor - INFO - ENHANCED target engineering: 15-day movement prediction
+2025-08-07 00:30:08,369 - src.models.lstm_predictor - INFO - Target stats - Mean: 0.009203, Std: 0.063157
+2025-08-07 00:30:08,369 - src.models.lstm_predictor - INFO - Target range - Min: -0.139623, Max: 0.139623
+2025-08-07 00:30:08,369 - src.models.lstm_predictor - INFO - 98th percentile used for clipping: 0.139623
+2025-08-07 00:30:08,373 - src.models.lstm_predictor - INFO - Prepared training data: (1224, 30, 43) features, (1224,) targets
+2025-08-07 00:30:08,443 - src.models.lstm_predictor - INFO - Using RobustScaler for target variable (better for financial data)
+2025-08-07 00:30:08,443 - src.models.lstm_predictor - INFO - Pre-scaling target stats - Mean: 0.010287, Std: 0.063084
+2025-08-07 00:30:08,443 - src.models.lstm_predictor - INFO - Pre-scaling target range - Min: -0.139623, Max: 0.139623
+2025-08-07 00:30:08,444 - src.models.lstm_predictor - INFO - Post-scaling target stats - Train mean: -0.032823, Train std: 0.445721
+2025-08-07 00:30:08,444 - src.models.lstm_predictor - INFO - Post-scaling validation - Val mean: 0.047469, Val std: 0.386621
+2025-08-07 00:30:08,444 - src.models.lstm_predictor - INFO - Data splits - Train: 856, Val: 183, Test: 185
+2025-08-07 00:30:08,444 - src.models.lstm_predictor - INFO - Target scaling - Train mean: 0.010287, Train std: 0.063084
+2025-08-07 00:30:08,444 - src.models.lstm_predictor - INFO - Building COMPLEX model with 256 LSTM units and ENHANCED anti-overfitting
+2025-08-07 00:30:08,592 - src.models.lstm_predictor - INFO - REGULARIZED complex model built: 600,311 parameters
+2025-08-07 00:30:08,592 - src.models.lstm_predictor - INFO - Enhanced Anti-Overfitting Architecture: Progressive regularization + reduced capacity
+2025-08-07 00:30:08,592 - src.models.lstm_predictor - INFO - Optimizer: Adam with lr=0.000250, clipnorm=0.5, weight_decay=0.01
+2025-08-07 00:30:08,592 - src.models.lstm_predictor - INFO - Features: L1/L2 regularization, progressive dropout, layer normalization, noise injection
+2025-08-07 00:30:08,592 - src.models.lstm_predictor - INFO - Model architecture: 30 time steps, 43 features
+2025-08-07 00:30:08,592 - src.models.lstm_predictor - INFO - SIMPLIFIED model with conservative parameters for stability
+2025-08-07 00:32:57,124 - src.models.lstm_predictor - WARNING - High validation loss detected: 185.2166 - model may be poor quality
+2025-08-07 00:32:59,096 - src.models.lstm_predictor - INFO - Model passed quality validation: Financial metrics passed: 5/7 checks
+✓ Val direction accuracy: 0.596
+✗ Test direction accuracy: 0.465 < 0.51
+✓ Val IC: 0.1778
+✓ Test IC: -0.1125
+✓ Val R²: 0.0217
+✓ Test R²: -0.1632
+✗ Overfitting: Val R² 0.022 vs Test R² -0.163
+2025-08-07 00:32:59,184 - src.models.lstm_predictor - INFO - Metrics saved to data/models/AAPL/AAPL_metrics.json
+2025-08-07 00:32:59,185 - src.models.lstm_predictor - INFO - Enhanced training completed successfully - Quality: Fair 👌
+2025-08-07 00:37:29,191 - src.models.lstm_predictor - ERROR - Error loading enhanced model for AAPL: Could not locate function 'directional_loss'. Make sure custom classes are decorated with `@keras.saving.register_keras_serializable()`. Full object config: {'module': 'builtins', 'class_name': 'function', 'config': 'directional_loss', 'registered_name': 'function'}
+2025-08-07 00:39:00,153 - src.models.lstm_predictor - INFO - Loaded enhanced model for AAPL
+2025-08-07 00:52:17,733 - src.models.lstm_predictor - INFO - Starting enhanced training for AAPL
+2025-08-07 00:52:17,735 - src.models.lstm_predictor - INFO - Removed existing model file: data/models/AAPL/AAPL_lstm_model.keras
+2025-08-07 00:52:17,735 - src.models.lstm_predictor - INFO - Removed existing model file: data/models/AAPL/AAPL_scaler.pkl
+2025-08-07 00:52:17,736 - src.models.lstm_predictor - INFO - Removed existing model file: data/models/AAPL/AAPL_feature_scaler.pkl
+2025-08-07 00:52:17,739 - src.models.lstm_predictor - INFO - Removed existing model file: data/models/AAPL/AAPL_metrics.json
+2025-08-07 00:52:17,739 - src.data.collector - INFO - Fetching fresh data for AAPL (5y)
+2025-08-07 00:52:18,346 - src.data.collector - INFO - Running data validation pipeline for AAPL
+2025-08-07 00:52:18,346 - src.data.validator - INFO - Starting validation for AAPL with 1255 rows
+2025-08-07 00:52:18,356 - src.data.validator - INFO - Validation complete for AAPL: 1255 clean rows
+2025-08-07 00:52:18,357 - src.data.validator - INFO - Pipeline complete for AAPL: 1255 -> 1255 rows
+2025-08-07 00:52:18,357 - src.data.collector - INFO - Data pipeline: 1255 -> 1255 rows
+2025-08-07 00:52:18,569 - src.data.collector - INFO - Successfully fetched data for AAPL
+2025-08-07 00:52:18,615 - src.models.lstm_predictor - INFO - Adding comprehensive 5-year historical sentiment features...
+2025-08-07 00:52:18,615 - src.models.lstm_predictor - INFO - Using 5y sentiment analysis for 5.0 years of data
+2025-08-07 00:52:18,615 - src.analysis.sentiment - INFO - Analyzing sentiment for AAPL over 1825 days (5y)
+2025-08-07 00:52:18,615 - src.analysis.sentiment - INFO - Using historical price-based sentiment for 5y period
+2025-08-07 00:52:18,787 - src.analysis.sentiment - INFO - Fetching news sentiment from Alpha Vantage for AAPL
+2025-08-07 00:52:19,198 - src.analysis.sentiment - INFO - Alpha Vantage response keys: ['items', 'sentiment_score_definition', 'relevance_score_definition', 'feed']
+2025-08-07 00:52:19,198 - src.analysis.sentiment - INFO - Found 50 news items
+2025-08-07 00:52:19,201 - src.analysis.sentiment - INFO - Historical sentiment for AAPL: 0.303 (trend: 0.955, momentum: -0.060, confidence: 1.000, news: 50)
+2025-08-07 00:52:19,208 - src.models.lstm_predictor - INFO - Added 5y sentiment features: avg_sentiment=0.301, confidence=1.000, news_count=50
+2025-08-07 00:52:19,208 - src.models.lstm_predictor - INFO - Adding comprehensive 5-year earnings features for training period...
+2025-08-07 00:52:19,217 - src.models.lstm_predictor - INFO - Requesting 19 earnings periods for 5.0 years of data
+2025-08-07 00:52:19,217 - src.analysis.fundamentals - INFO - Fetching 19 earnings periods for AAPL
+2025-08-07 00:52:19,371 - src.analysis.fundamentals - INFO - Alpha Vantage: Retrieved 19 earnings events
+2025-08-07 00:52:19,373 - src.models.lstm_predictor - INFO - Found 19 earnings events for comprehensive analysis
+2025-08-07 00:52:19,385 - src.models.lstm_predictor - INFO - Added comprehensive earnings features: beat_rate=0.789, avg_surprise=0.086, volatility=0.109
+2025-08-07 00:52:19,410 - src.models.lstm_predictor - INFO - Generated 92 historical features from 1255 data points
+2025-08-07 00:52:19,410 - src.models.lstm_predictor - INFO - Using 34 features for training: ['Momentum_1d', 'Momentum_5d', 'Momentum_Strength', 'Momentum_Quality', 'Trend_Persistence', 'Trend_Acceleration', 'Multi_Trend_Align', 'Volatility_5d', 'Vol_Regime', 'Vol_Breakout', 'Mean_Reversion_5d', 'Mean_Reversion_20d', 'Volume_Price_Trend', 'Volume_Breakout', 'Sharpe_5d', 'Sharpe_20d', 'Fractal_Efficiency', 'Jump_Score', 'Bull_Regime', 'Bear_Regime', 'Price_SMA20_Ratio', 'RSI_Normalized', 'MACD_Histogram', 'BB_Position', 'Returns_Lag1', 'Price_Acceleration', 'Overall_Sentiment', 'Bullish_Ratio', 'Sentiment_Change', 'Earnings_Beat_History', 'Earnings_Surprise_Avg', 'Recent_Earnings_Trend', 'Month_Effect', 'Quarter_Effect']
+2025-08-07 00:52:19,413 - src.models.lstm_predictor - WARNING - Removing zero-variance features: ['Earnings_Surprise_Avg', 'Recent_Earnings_Trend']
+2025-08-07 00:52:19,414 - src.models.lstm_predictor - INFO - ROBUST target engineering: 1-day movement prediction
+2025-08-07 00:52:19,414 - src.models.lstm_predictor - INFO - Target stats - Mean: 0.000630, Std: 0.017534
+2025-08-07 00:52:19,414 - src.models.lstm_predictor - INFO - Target range - Min: -0.057482, Max: 0.057482
+2025-08-07 00:52:19,414 - src.models.lstm_predictor - INFO - 99th percentile used for clipping: 0.057482
+2025-08-07 00:52:19,417 - src.models.lstm_predictor - INFO - Prepared training data: (1224, 30, 32) features, (1224,) targets
+2025-08-07 00:52:19,483 - src.models.lstm_predictor - INFO - Using StandardScaler for target variable (consistent with features)
+2025-08-07 00:52:19,483 - src.models.lstm_predictor - INFO - Pre-scaling target stats - Mean: 0.000703, Std: 0.017465
+2025-08-07 00:52:19,483 - src.models.lstm_predictor - INFO - Pre-scaling target range - Min: -0.057482, Max: 0.057482
+2025-08-07 00:52:19,483 - src.models.lstm_predictor - INFO - Post-scaling target stats - Train mean: 0.000000, Train std: 1.000000
+2025-08-07 00:52:19,483 - src.models.lstm_predictor - INFO - Post-scaling validation - Val mean: 0.021623, Val std: 0.845834
+2025-08-07 00:52:19,483 - src.models.lstm_predictor - INFO - Data splits - Train: 856, Val: 183, Test: 185
+2025-08-07 00:52:19,484 - src.models.lstm_predictor - INFO - Target scaling - Train mean: 0.000703, Train std: 0.017465
+2025-08-07 00:52:19,484 - src.models.lstm_predictor - INFO - Building COMPLEX model with 256 LSTM units and BALANCED regularization
+2025-08-07 00:52:19,615 - src.models.lstm_predictor - INFO - BALANCED complex model built: 589,601 parameters
+2025-08-07 00:52:19,615 - src.models.lstm_predictor - INFO - Balanced Architecture: Moderate regularization allowing effective learning
+2025-08-07 00:52:19,615 - src.models.lstm_predictor - INFO - Optimizer: Adam with lr=0.000500, clipnorm=1.0, weight_decay=0.001
+2025-08-07 00:52:19,615 - src.models.lstm_predictor - INFO - Features: Balanced L1/L2, moderate dropout (0.1-0.35), layer normalization
+2025-08-07 00:52:19,615 - src.models.lstm_predictor - INFO - Model architecture: 30 time steps, 32 features
+2025-08-07 00:52:19,615 - src.models.lstm_predictor - INFO - SIMPLIFIED model with conservative parameters for stability
+2025-08-07 00:54:40,279 - src.models.lstm_predictor - WARNING - High validation loss detected: 10.6863 - model may be poor quality
+2025-08-07 00:54:42,241 - src.models.lstm_predictor - INFO - Model passed quality validation: Financial metrics passed: 6/7 checks
+✓ Val direction accuracy: 0.574
+✓ Test direction accuracy: 0.557
+✓ Val IC: 0.0394
+✓ Test IC: 0.0441
+✓ Val R²: -0.0013
+✓ Test R²: -0.0097
+✗ Overfitting: Val R² -0.001 vs Test R² -0.010
+2025-08-07 00:54:42,319 - src.models.lstm_predictor - INFO - Metrics saved to data/models/AAPL/AAPL_metrics.json
+2025-08-07 00:54:42,319 - src.models.lstm_predictor - INFO - Enhanced training completed successfully - Quality: Poor ❌
+2025-08-07 01:18:08,953 - src.models.lstm_predictor - INFO - Starting enhanced training for TSLA
+2025-08-07 01:18:08,954 - src.data.collector - INFO - Fetching fresh data for TSLA (10y)
+2025-08-07 01:18:09,552 - src.data.collector - INFO - Running data validation pipeline for TSLA
+2025-08-07 01:18:09,552 - src.data.validator - INFO - Starting validation for TSLA with 2514 rows
+2025-08-07 01:18:09,564 - src.data.validator - INFO - Validation complete for TSLA: 2514 clean rows
+2025-08-07 01:18:09,564 - src.data.validator - INFO - Pipeline complete for TSLA: 2514 -> 2514 rows
+2025-08-07 01:18:09,565 - src.data.collector - INFO - Data pipeline: 2514 -> 2514 rows
+2025-08-07 01:18:09,771 - src.data.collector - INFO - Successfully fetched data for TSLA
+2025-08-07 01:18:09,822 - src.models.lstm_predictor - INFO - Adding comprehensive 5-year historical sentiment features...
+2025-08-07 01:18:09,822 - src.models.lstm_predictor - INFO - Using 5y sentiment analysis for 10.0 years of data
+2025-08-07 01:18:09,822 - src.analysis.sentiment - INFO - Analyzing sentiment for TSLA over 1825 days (5y)
+2025-08-07 01:18:09,822 - src.analysis.sentiment - INFO - Using historical price-based sentiment for 5y period
+2025-08-07 01:18:09,943 - src.analysis.sentiment - INFO - Fetching news sentiment from Alpha Vantage for TSLA
+2025-08-07 01:18:10,361 - src.analysis.sentiment - INFO - Alpha Vantage response keys: ['items', 'sentiment_score_definition', 'relevance_score_definition', 'feed']
+2025-08-07 01:18:10,361 - src.analysis.sentiment - INFO - Found 50 news items
+2025-08-07 01:18:10,362 - src.analysis.sentiment - INFO - Historical sentiment for TSLA: 0.564 (trend: 1.000, momentum: 0.566, confidence: 1.000, news: 50)
+2025-08-07 01:18:10,366 - src.models.lstm_predictor - INFO - Added 5y sentiment features: avg_sentiment=0.561, confidence=1.000, news_count=50
+2025-08-07 01:18:10,366 - src.models.lstm_predictor - INFO - Adding comprehensive 5-year earnings features for training period...
+2025-08-07 01:18:10,371 - src.models.lstm_predictor - INFO - Requesting 39 earnings periods for 10.0 years of data
+2025-08-07 01:18:10,372 - src.analysis.fundamentals - INFO - Fetching 39 earnings periods for TSLA
+2025-08-07 01:18:10,501 - src.analysis.fundamentals - INFO - Alpha Vantage: Retrieved 39 earnings events
+2025-08-07 01:18:10,502 - src.models.lstm_predictor - INFO - Found 39 earnings events for comprehensive analysis
+2025-08-07 01:18:10,517 - src.models.lstm_predictor - INFO - Added comprehensive earnings features: beat_rate=0.231, avg_surprise=0.617, volatility=3.419
+2025-08-07 01:18:10,536 - src.models.lstm_predictor - INFO - Generated 92 historical features from 2514 data points
+2025-08-07 01:18:10,536 - src.models.lstm_predictor - INFO - Using 12 features for training: ['Momentum_1d', 'Momentum_5d', 'Volatility_5d', 'Vol_Regime', 'Mean_Reversion_5d', 'Mean_Reversion_20d', 'Price_SMA20_Ratio', 'RSI_Normalized', 'MACD_Histogram', 'Returns_Lag1', 'Volume_Price_Trend', 'Overall_Sentiment']
+2025-08-07 01:18:10,539 - src.models.lstm_predictor - INFO - IMPROVED target engineering: Log returns for 1-day movement prediction
+2025-08-07 01:18:10,539 - src.models.lstm_predictor - INFO - Target stats - Mean: 0.001197, Std: 0.036409
+2025-08-07 01:18:10,539 - src.models.lstm_predictor - INFO - Target range - Min: -0.150995, Max: 0.150995
+2025-08-07 01:18:10,540 - src.models.lstm_predictor - INFO - 95th percentile used for clipping: 0.075498
+2025-08-07 01:18:10,543 - src.models.lstm_predictor - INFO - Prepared training data: (2483, 30, 12) features, (2483,) targets
+2025-08-07 01:18:10,658 - src.models.lstm_predictor - INFO - Using StandardScaler for target variable (consistent with features)
+2025-08-07 01:18:10,659 - src.models.lstm_predictor - INFO - Pre-scaling target stats - Mean: 0.001704, Std: 0.035627
+2025-08-07 01:18:10,659 - src.models.lstm_predictor - INFO - Pre-scaling target range - Min: -0.150995, Max: 0.150995
+2025-08-07 01:18:10,659 - src.models.lstm_predictor - INFO - Post-scaling target stats - Train mean: -0.000000, Train std: 1.000000
+2025-08-07 01:18:10,659 - src.models.lstm_predictor - INFO - Post-scaling validation - Val mean: -0.084088, Val std: 0.993140
+2025-08-07 01:18:10,659 - src.models.lstm_predictor - INFO - Data splits - Train: 1738, Val: 372, Test: 373
+2025-08-07 01:18:10,659 - src.models.lstm_predictor - INFO - Target scaling - Train mean: 0.001704, Train std: 0.035627
+2025-08-07 01:18:10,659 - src.models.lstm_predictor - INFO - 🔧 SIMPLIFIED MODEL selected:
+2025-08-07 01:18:10,659 - src.models.lstm_predictor - INFO -    Reason: Features=12, Samples=1738, Data=2514
+2025-08-07 01:18:10,659 - src.models.lstm_predictor - INFO -    Strategy: Single LSTM + 2 Dense layers for optimal R² performance
+2025-08-07 01:18:10,659 - src.models.lstm_predictor - INFO - Building SIMPLIFIED model optimized for R² performance
+2025-08-07 01:18:10,747 - src.models.lstm_predictor - INFO - SIMPLIFIED model built: 22,361 parameters
+2025-08-07 01:18:10,747 - src.models.lstm_predictor - INFO - Architecture: Single LSTM + 2 Dense layers, optimized for R² performance
+2025-08-07 01:18:10,747 - src.models.lstm_predictor - INFO - Model architecture: 30 time steps, 12 features
+2025-08-07 01:18:10,747 - src.models.lstm_predictor - INFO - Total parameters: 22,361
+2025-08-07 01:18:18,234 - src.models.lstm_predictor - WARNING - High validation loss detected: 1.1091 - model may be poor quality
+2025-08-07 01:18:18,680 - src.models.lstm_predictor - INFO - Model passed quality validation: Financial metrics passed: 5/7 checks
+✗ Val direction accuracy: 0.503 < 0.51
+✗ Test direction accuracy: 0.496 < 0.51
+✓ Val IC: 0.0465
+✓ Test IC: 0.0642
+✓ Val R²: -0.0055
+✓ Test R²: 0.0021
+✓ No severe overfitting
+2025-08-07 01:18:18,837 - src.models.lstm_predictor - INFO - Metrics saved to data/models/TSLA/TSLA_metrics.json
+2025-08-07 01:18:18,837 - src.models.lstm_predictor - INFO - ================================================================================
+2025-08-07 01:18:18,837 - src.models.lstm_predictor - INFO - COMPREHENSIVE MODEL EVALUATION
+2025-08-07 01:18:18,837 - src.models.lstm_predictor - INFO - ================================================================================
+2025-08-07 01:18:18,837 - src.models.lstm_predictor - INFO - 🎯 TRAINING PERFORMANCE:
+2025-08-07 01:18:18,837 - src.models.lstm_predictor - INFO -    Training Time: 9.9s
+2025-08-07 01:18:18,837 - src.models.lstm_predictor - INFO -    Epochs Trained: 16
+2025-08-07 01:18:18,837 - src.models.lstm_predictor - INFO -    Model Parameters: 22,361
+2025-08-07 01:18:18,837 - src.models.lstm_predictor - INFO -    Features Used: 12
+2025-08-07 01:18:18,837 - src.models.lstm_predictor - INFO - 📊 R² SCORE ANALYSIS:
+2025-08-07 01:18:18,837 - src.models.lstm_predictor - INFO -    Validation R²: -0.0055
+2025-08-07 01:18:18,837 - src.models.lstm_predictor - INFO -    Test R²: 0.0021
+2025-08-07 01:18:18,837 - src.models.lstm_predictor - INFO -    Overfitting Gap: 0.0076
+2025-08-07 01:18:18,837 - src.models.lstm_predictor - INFO -    R² Assessment: ⚠️ BELOW AVERAGE - Still within normal range
+2025-08-07 01:18:18,837 - src.models.lstm_predictor - INFO - 💰 FINANCIAL PERFORMANCE:
+2025-08-07 01:18:18,837 - src.models.lstm_predictor - INFO -    Validation Direction Accuracy: 50.3%
+2025-08-07 01:18:18,837 - src.models.lstm_predictor - INFO -    Test Direction Accuracy: 49.6%
+2025-08-07 01:18:18,837 - src.models.lstm_predictor - INFO -    Validation Information Coefficient: 0.0465
+2025-08-07 01:18:18,837 - src.models.lstm_predictor - INFO -    Test Information Coefficient: 0.0642
+2025-08-07 01:18:18,837 - src.models.lstm_predictor - INFO -    Direction Assessment: ❌ POOR - Below random performance
+2025-08-07 01:18:18,837 - src.models.lstm_predictor - INFO - 📉 ERROR ANALYSIS:
+2025-08-07 01:18:18,837 - src.models.lstm_predictor - INFO -    Validation RMSE: 0.0355
+2025-08-07 01:18:18,837 - src.models.lstm_predictor - INFO -    Test RMSE: 0.0411
+2025-08-07 01:18:18,837 - src.models.lstm_predictor - INFO -    Validation MAE: 0.0261
+2025-08-07 01:18:18,837 - src.models.lstm_predictor - INFO -    Test MAE: 0.0307
+2025-08-07 01:18:18,837 - src.models.lstm_predictor - INFO - 🔍 GENERALIZATION ANALYSIS:
+2025-08-07 01:18:18,837 - src.models.lstm_predictor - INFO -    Training R²: 0.0034
+2025-08-07 01:18:18,837 - src.models.lstm_predictor - INFO -    Overfitting Ratio: 2.60
+2025-08-07 01:18:18,837 - src.models.lstm_predictor - INFO -    Generalization Assessment: ❌ POOR - Significant overfitting
+2025-08-07 01:18:18,837 - src.models.lstm_predictor - INFO - 💼 TRADING VIABILITY:
+2025-08-07 01:18:18,837 - src.models.lstm_predictor - INFO -    Trading Readiness: 👍 PROMISING - Worth further testing
+2025-08-07 01:18:18,837 - src.models.lstm_predictor - INFO -    Trading Score: 3/6
+2025-08-07 01:18:18,837 - src.models.lstm_predictor - INFO - 🎯 RECOMMENDATIONS:
+2025-08-07 01:18:18,838 - src.models.lstm_predictor - INFO -    • Consider using more training data (5+ years)
+2025-08-07 01:18:18,838 - src.models.lstm_predictor - INFO -    • Try different feature combinations
+2025-08-07 01:18:18,838 - src.models.lstm_predictor - INFO -    • Experiment with different prediction horizons
+2025-08-07 01:18:18,838 - src.models.lstm_predictor - INFO -    • Focus on directional accuracy over magnitude
+2025-08-07 01:18:18,838 - src.models.lstm_predictor - INFO -    • Consider ensemble methods
+2025-08-07 01:18:18,838 - src.models.lstm_predictor - INFO -    • Review feature engineering
+2025-08-07 01:18:18,838 - src.models.lstm_predictor - INFO -    • Increase regularization
+2025-08-07 01:18:18,838 - src.models.lstm_predictor - INFO -    • Reduce model complexity
+2025-08-07 01:18:18,838 - src.models.lstm_predictor - INFO -    • Use more training data
+2025-08-07 01:18:18,838 - src.models.lstm_predictor - INFO - ================================================================================
+2025-08-07 01:18:18,838 - src.models.lstm_predictor - INFO - Enhanced training completed successfully - Quality: Fair 👌
+2025-08-07 01:35:03,899 - src.models.lstm_predictor - INFO - Starting enhanced training for TSLA
+2025-08-07 01:35:03,900 - src.models.lstm_predictor - INFO - Removed existing model file: data/models/TSLA/TSLA_lstm_model.keras
+2025-08-07 01:35:03,901 - src.models.lstm_predictor - INFO - Removed existing model file: data/models/TSLA/TSLA_scaler.pkl
+2025-08-07 01:35:03,902 - src.models.lstm_predictor - INFO - Removed existing model file: data/models/TSLA/TSLA_feature_scaler.pkl
+2025-08-07 01:35:04,009 - src.models.lstm_predictor - INFO - Removed existing model file: data/models/TSLA/TSLA_metrics.json
+2025-08-07 01:35:04,009 - src.data.collector - INFO - Fetching fresh data for TSLA (10y)
+2025-08-07 01:35:04,642 - src.data.collector - INFO - Running data validation pipeline for TSLA
+2025-08-07 01:35:04,642 - src.data.validator - INFO - Starting validation for TSLA with 2514 rows
+2025-08-07 01:35:04,666 - src.data.validator - INFO - Validation complete for TSLA: 2514 clean rows
+2025-08-07 01:35:04,667 - src.data.validator - INFO - Pipeline complete for TSLA: 2514 -> 2514 rows
+2025-08-07 01:35:04,667 - src.data.collector - INFO - Data pipeline: 2514 -> 2514 rows
+2025-08-07 01:35:04,870 - src.data.collector - INFO - Successfully fetched data for TSLA
+2025-08-07 01:35:04,898 - src.models.lstm_predictor - INFO - Adding ENHANCED temporally accurate sentiment features...
+2025-08-07 01:35:04,899 - src.models.lstm_predictor - INFO - Using 5y sentiment with 20 temporal periods
+2025-08-07 01:35:04,899 - src.analysis.sentiment - INFO - Analyzing sentiment for TSLA over 1825 days (5y)
+2025-08-07 01:35:04,899 - src.analysis.sentiment - INFO - Using historical price-based sentiment for 5y period
+2025-08-07 01:35:04,988 - src.analysis.sentiment - INFO - Fetching news sentiment from Alpha Vantage for TSLA
+2025-08-07 01:35:05,430 - src.analysis.sentiment - INFO - Alpha Vantage response keys: ['items', 'sentiment_score_definition', 'relevance_score_definition', 'feed']
+2025-08-07 01:35:05,431 - src.analysis.sentiment - INFO - Found 50 news items
+2025-08-07 01:35:05,433 - src.analysis.sentiment - INFO - Historical sentiment for TSLA: 0.567 (trend: 1.000, momentum: 0.566, confidence: 1.000, news: 50)
+2025-08-07 01:35:05,458 - src.models.lstm_predictor - INFO - Added ENHANCED temporal sentiment: periods=20, avg_sentiment=0.561, confidence=1.000, news_count=50
+2025-08-07 01:35:05,458 - src.models.lstm_predictor - INFO - Adding comprehensive 5-year earnings features for training period...
+2025-08-07 01:35:05,470 - src.models.lstm_predictor - INFO - Requesting 39 earnings periods for 10.0 years of data
+2025-08-07 01:35:05,470 - src.analysis.fundamentals - INFO - Fetching 39 earnings periods for TSLA
+2025-08-07 01:35:05,654 - src.analysis.fundamentals - INFO - Alpha Vantage: Retrieved 39 earnings events
+2025-08-07 01:35:05,654 - src.models.lstm_predictor - INFO - Found 39 earnings events for comprehensive analysis
+2025-08-07 01:35:05,665 - src.models.lstm_predictor - INFO - Added comprehensive earnings features: beat_rate=0.231, avg_surprise=0.617, volatility=3.419
+2025-08-07 01:35:05,683 - src.models.lstm_predictor - INFO - Generated 100 historical features from 2514 data points
+2025-08-07 01:35:05,683 - src.models.lstm_predictor - INFO - Using 71 features for training: ['Momentum_1d', 'Momentum_3d', 'Momentum_5d', 'Momentum_Quality', 'Momentum_Strength', 'Momentum_Consistency', 'Volatility_5d', 'Volatility_20d', 'Vol_Regime', 'Vol_Ratio', 'Vol_Persistence', 'Vol_Breakout', 'HL_Volatility', 'Mean_Reversion_5d', 'Mean_Reversion_20d', 'Reversion_Divergence', 'Distance_From_SMA20', 'Mean_Reversion_Signal', 'Price_SMA5_Ratio', 'Price_SMA20_Ratio', 'SMA_Cross', 'RSI_Normalized', 'MACD_Histogram', 'BB_Position', 'Returns_Lag1', 'Returns_Lag2', 'Returns_Lag3', 'Price_Acceleration', 'Volume_Ratio', 'Volume_Price_Trend', 'Volume_Breakout', 'Price_Volume', 'VPT_Normalized', 'Price_Efficiency', 'Overall_Sentiment', 'Sentiment_Change', 'Sentiment_Volatility', 'Sentiment_Price_Divergence', 'Sentiment_Momentum', 'Sentiment_Regime', 'Sentiment_Strength', 'Trend_Persistence', 'Trend_Acceleration', 'Multi_Trend_Align', 'Fractal_Efficiency', 'Relative_Strength', 'Sharpe_5d', 'Sharpe_20d', 'Sharpe_Ratio', 'Jump_Score', 'Outlier_Signal', 'Bull_Regime', 'Bear_Regime', 'High_Vol_Regime', 'Stress_Indicator', 'Vol_Term_Structure', 'Month_Effect', 'Quarter_Effect', 'January_Effect', 'December_Effect', 'Quarter_End', 'Spread_Proxy', 'Spread_Anomaly', 'Price_Percentile_20d', 'Price_Percentile_50d', 'Days_To_Earnings', 'Earnings_Beat_History', 'EPS_Growth_Rate', 'Earnings_Surprise_Avg', 'Earnings_Volatility', 'Recent_Earnings_Trend']
+2025-08-07 01:35:05,688 - src.models.lstm_predictor - WARNING - Removing zero-variance features: ['Sentiment_Regime', 'Days_To_Earnings', 'Earnings_Beat_History']
+2025-08-07 01:35:05,689 - src.models.lstm_predictor - INFO - IMPROVED target engineering: Log returns for 1-day movement prediction
+2025-08-07 01:35:05,690 - src.models.lstm_predictor - INFO - Target stats - Mean: 0.001197, Std: 0.036409
+2025-08-07 01:35:05,690 - src.models.lstm_predictor - INFO - Target range - Min: -0.150995, Max: 0.150995
+2025-08-07 01:35:05,690 - src.models.lstm_predictor - INFO - 95th percentile used for clipping: 0.075498
+2025-08-07 01:35:05,706 - src.models.lstm_predictor - INFO - Prepared training data: (2483, 30, 68) features, (2483,) targets
+2025-08-07 01:35:05,881 - src.models.lstm_predictor - INFO - Using StandardScaler for target variable (consistent with features)
+2025-08-07 01:35:05,881 - src.models.lstm_predictor - INFO - Pre-scaling target stats - Mean: 0.001704, Std: 0.035627
+2025-08-07 01:35:05,881 - src.models.lstm_predictor - INFO - Pre-scaling target range - Min: -0.150995, Max: 0.150995
+2025-08-07 01:35:05,882 - src.models.lstm_predictor - INFO - Post-scaling target stats - Train mean: -0.000000, Train std: 1.000000
+2025-08-07 01:35:05,882 - src.models.lstm_predictor - INFO - Post-scaling validation - Val mean: -0.084088, Val std: 0.993140
+2025-08-07 01:35:05,882 - src.models.lstm_predictor - INFO - Data splits - Train: 1738, Val: 372, Test: 373
+2025-08-07 01:35:05,882 - src.models.lstm_predictor - INFO - Target scaling - Train mean: 0.001704, Train std: 0.035627
+2025-08-07 01:35:05,882 - src.models.lstm_predictor - INFO - 🔧 COMPLEX MODEL selected for MAXIMUM LEARNING:
+2025-08-07 01:35:05,882 - src.models.lstm_predictor - INFO -    Features=68, Samples=1738, Data=2514
+2025-08-07 01:35:05,882 - src.models.lstm_predictor - INFO -    Strategy: Multi-layer LSTM + attention for 80%+ accuracy target
+2025-08-07 01:35:05,882 - src.models.lstm_predictor - INFO - Building ENHANCED COMPLEX model with 256 LSTM units for 80%+ accuracy
+2025-08-07 01:35:06,116 - src.models.lstm_predictor - INFO - ENHANCED COMPLEX model built: 1,695,753 parameters
+2025-08-07 01:35:06,116 - src.models.lstm_predictor - INFO - Architecture: 3 LSTM + 2 Attention + 4 Dense layers for maximum learning
+2025-08-07 01:35:06,116 - src.models.lstm_predictor - INFO - Model architecture: 30 time steps, 68 features
+2025-08-07 01:35:06,117 - src.models.lstm_predictor - INFO - Total parameters: 1,695,753
+2025-08-07 01:35:06,117 - src.models.lstm_predictor - INFO - Starting INTENSIVE training for 80%+ accuracy target...
+2025-08-07 01:47:33,883 - src.models.lstm_predictor - INFO - No GPU found, using CPU
+2025-08-07 01:47:34,885 - src.models.lstm_predictor - INFO - System detected: laptop
+2025-08-07 01:47:34,886 - src.models.lstm_predictor - INFO - GPU available: False
+2025-08-07 01:47:34,886 - src.models.lstm_predictor - INFO - Thermal profile: balanced
+2025-08-07 01:47:34,886 - src.models.lstm_predictor - INFO - Initialized Enhanced LSTM for TSLA
+2025-08-07 01:47:34,887 - src.models.lstm_predictor - INFO - System: laptop (balanced thermal profile)
+2025-08-07 01:47:34,887 - src.models.lstm_predictor - INFO - GPU Available: False
+2025-08-07 01:47:34,887 - src.models.lstm_predictor - INFO - Training Config: {'batch_size': 32, 'epochs': 200, 'patience': 25, 'workers': 1, 'use_multiprocessing': False, 'max_queue_size': 5}
+2025-08-07 01:47:34,887 - src.models.lstm_predictor - INFO - Starting enhanced training for TSLA
+2025-08-07 01:47:34,887 - src.data.collector - INFO - Fetching fresh data for TSLA (10y)
+2025-08-07 01:47:35,552 - src.data.collector - INFO - Running data validation pipeline for TSLA
+2025-08-07 01:47:35,552 - src.data.validator - INFO - Starting validation for TSLA with 2514 rows
+2025-08-07 01:47:35,564 - src.data.validator - INFO - Validation complete for TSLA: 2514 clean rows
+2025-08-07 01:47:35,565 - src.data.validator - INFO - Pipeline complete for TSLA: 2514 -> 2514 rows
+2025-08-07 01:47:35,565 - src.data.collector - INFO - Data pipeline: 2514 -> 2514 rows
+2025-08-07 01:47:35,791 - src.data.collector - INFO - Successfully fetched data for TSLA
+2025-08-07 01:47:35,846 - src.models.lstm_predictor - INFO - Adding ENHANCED temporally accurate sentiment features...
+2025-08-07 01:47:35,846 - src.models.lstm_predictor - INFO - Using 5y sentiment with 20 temporal periods
+2025-08-07 01:47:35,846 - src.analysis.sentiment - INFO - Analyzing sentiment for TSLA over 1825 days (5y)
+2025-08-07 01:47:35,846 - src.analysis.sentiment - INFO - Using historical price-based sentiment for 5y period
+2025-08-07 01:47:35,942 - src.analysis.sentiment - INFO - Fetching news sentiment from Alpha Vantage for TSLA
+2025-08-07 01:47:36,349 - src.analysis.sentiment - INFO - Alpha Vantage response keys: ['items', 'sentiment_score_definition', 'relevance_score_definition', 'feed']
+2025-08-07 01:47:36,349 - src.analysis.sentiment - INFO - Found 50 news items
+2025-08-07 01:47:36,353 - src.analysis.sentiment - INFO - Historical sentiment for TSLA: 0.567 (trend: 1.000, momentum: 0.566, confidence: 1.000, news: 50)
+2025-08-07 01:47:36,370 - src.models.lstm_predictor - INFO - Added ENHANCED temporal sentiment: periods=20, avg_sentiment=0.561, confidence=1.000, news_count=50
+2025-08-07 01:47:36,370 - src.models.lstm_predictor - INFO - Adding comprehensive 5-year earnings features for training period...
+2025-08-07 01:47:36,378 - src.models.lstm_predictor - INFO - Requesting 39 earnings periods for 10.0 years of data
+2025-08-07 01:47:36,378 - src.analysis.fundamentals - INFO - Fetching 39 earnings periods for TSLA
+2025-08-07 01:47:36,528 - src.analysis.fundamentals - INFO - Alpha Vantage: Retrieved 39 earnings events
+2025-08-07 01:47:36,529 - src.models.lstm_predictor - INFO - Found 39 earnings events for comprehensive analysis
+2025-08-07 01:47:36,545 - src.models.lstm_predictor - INFO - Added comprehensive earnings features: beat_rate=0.231, avg_surprise=0.617, volatility=3.419
+2025-08-07 01:47:36,568 - src.models.lstm_predictor - INFO - Generated 100 historical features from 2514 data points
+2025-08-07 01:47:36,568 - src.models.lstm_predictor - INFO - Using 71 features for training: ['Momentum_1d', 'Momentum_3d', 'Momentum_5d', 'Momentum_Quality', 'Momentum_Strength', 'Momentum_Consistency', 'Volatility_5d', 'Volatility_20d', 'Vol_Regime', 'Vol_Ratio', 'Vol_Persistence', 'Vol_Breakout', 'HL_Volatility', 'Mean_Reversion_5d', 'Mean_Reversion_20d', 'Reversion_Divergence', 'Distance_From_SMA20', 'Mean_Reversion_Signal', 'Price_SMA5_Ratio', 'Price_SMA20_Ratio', 'SMA_Cross', 'RSI_Normalized', 'MACD_Histogram', 'BB_Position', 'Returns_Lag1', 'Returns_Lag2', 'Returns_Lag3', 'Price_Acceleration', 'Volume_Ratio', 'Volume_Price_Trend', 'Volume_Breakout', 'Price_Volume', 'VPT_Normalized', 'Price_Efficiency', 'Overall_Sentiment', 'Sentiment_Change', 'Sentiment_Volatility', 'Sentiment_Price_Divergence', 'Sentiment_Momentum', 'Sentiment_Regime', 'Sentiment_Strength', 'Trend_Persistence', 'Trend_Acceleration', 'Multi_Trend_Align', 'Fractal_Efficiency', 'Relative_Strength', 'Sharpe_5d', 'Sharpe_20d', 'Sharpe_Ratio', 'Jump_Score', 'Outlier_Signal', 'Bull_Regime', 'Bear_Regime', 'High_Vol_Regime', 'Stress_Indicator', 'Vol_Term_Structure', 'Month_Effect', 'Quarter_Effect', 'January_Effect', 'December_Effect', 'Quarter_End', 'Spread_Proxy', 'Spread_Anomaly', 'Price_Percentile_20d', 'Price_Percentile_50d', 'Days_To_Earnings', 'Earnings_Beat_History', 'EPS_Growth_Rate', 'Earnings_Surprise_Avg', 'Earnings_Volatility', 'Recent_Earnings_Trend']
+2025-08-07 01:47:36,574 - src.models.lstm_predictor - WARNING - Removing zero-variance features: ['Sentiment_Regime', 'Days_To_Earnings', 'Earnings_Beat_History']
+2025-08-07 01:47:36,576 - src.models.lstm_predictor - INFO - IMPROVED target engineering: Log returns for 1-day movement prediction
+2025-08-07 01:47:36,577 - src.models.lstm_predictor - INFO - Target stats - Mean: 0.001197, Std: 0.036409
+2025-08-07 01:47:36,577 - src.models.lstm_predictor - INFO - Target range - Min: -0.150995, Max: 0.150995
+2025-08-07 01:47:36,577 - src.models.lstm_predictor - INFO - 95th percentile used for clipping: 0.075498
+2025-08-07 01:47:36,590 - src.models.lstm_predictor - INFO - Prepared training data: (2483, 30, 68) features, (2483,) targets
+2025-08-07 01:47:36,730 - src.models.lstm_predictor - INFO - Using StandardScaler for target variable (consistent with features)
+2025-08-07 01:47:36,730 - src.models.lstm_predictor - INFO - Pre-scaling target stats - Mean: 0.001704, Std: 0.035627
+2025-08-07 01:47:36,730 - src.models.lstm_predictor - INFO - Pre-scaling target range - Min: -0.150995, Max: 0.150995
+2025-08-07 01:47:36,730 - src.models.lstm_predictor - INFO - Post-scaling target stats - Train mean: -0.000000, Train std: 1.000000
+2025-08-07 01:47:36,730 - src.models.lstm_predictor - INFO - Post-scaling validation - Val mean: -0.084088, Val std: 0.993140
+2025-08-07 01:47:36,731 - src.models.lstm_predictor - INFO - Data splits - Train: 1738, Val: 372, Test: 373
+2025-08-07 01:47:36,731 - src.models.lstm_predictor - INFO - Target scaling - Train mean: 0.001704, Train std: 0.035627
+2025-08-07 01:47:36,731 - src.models.lstm_predictor - INFO - 🔧 COMPLEX MODEL selected for MAXIMUM LEARNING:
+2025-08-07 01:47:36,731 - src.models.lstm_predictor - INFO -    Features=68, Samples=1738, Data=2514
+2025-08-07 01:47:36,731 - src.models.lstm_predictor - INFO -    Strategy: Multi-layer LSTM + attention for 80%+ accuracy target
+2025-08-07 01:47:36,731 - src.models.lstm_predictor - INFO - Building ENHANCED COMPLEX model with 256 LSTM units for 80%+ accuracy
+2025-08-07 01:47:36,896 - src.models.lstm_predictor - INFO - ENHANCED COMPLEX model built: 1,695,753 parameters
+2025-08-07 01:47:36,896 - src.models.lstm_predictor - INFO - Architecture: 3 LSTM + 2 Attention + 4 Dense layers for maximum learning
+2025-08-07 01:47:36,896 - src.models.lstm_predictor - INFO - Model architecture: 30 time steps, 68 features
+2025-08-07 01:47:36,897 - src.models.lstm_predictor - INFO - Total parameters: 1,695,753
+2025-08-07 01:47:36,897 - src.models.lstm_predictor - INFO - Starting SYSTEM-AWARE INTENSIVE training for 80%+ accuracy target...
+2025-08-07 01:47:36,897 - src.models.lstm_predictor - INFO - Training configuration: {'batch_size': 32, 'epochs': 200, 'patience': 25, 'workers': 1, 'use_multiprocessing': False, 'max_queue_size': 5}
+2025-08-07 01:47:36,897 - src.models.lstm_predictor - ERROR - Enhanced training failed: fit() got an unexpected keyword argument 'workers'
+2025-08-07 01:48:03,297 - src.models.lstm_predictor - INFO - No GPU found, using CPU
+2025-08-07 01:48:04,302 - src.models.lstm_predictor - INFO - System detected: laptop
+2025-08-07 01:48:04,303 - src.models.lstm_predictor - INFO - GPU available: False
+2025-08-07 01:48:04,303 - src.models.lstm_predictor - INFO - Thermal profile: balanced
+2025-08-07 01:48:04,303 - src.models.lstm_predictor - INFO - Initialized Enhanced LSTM for TSLA
+2025-08-07 01:48:04,303 - src.models.lstm_predictor - INFO - System: laptop (balanced thermal profile)
+2025-08-07 01:48:04,303 - src.models.lstm_predictor - INFO - GPU Available: False
+2025-08-07 01:48:04,303 - src.models.lstm_predictor - INFO - Training Config: {'batch_size': 32, 'epochs': 200, 'patience': 25, 'workers': 1, 'use_multiprocessing': False, 'max_queue_size': 5}
+2025-08-07 01:48:04,304 - src.models.lstm_predictor - INFO - Starting enhanced training for TSLA
+2025-08-07 01:48:04,304 - src.data.collector - INFO - Fetching fresh data for TSLA (10y)
+2025-08-07 01:48:04,974 - src.data.collector - INFO - Running data validation pipeline for TSLA
+2025-08-07 01:48:04,974 - src.data.validator - INFO - Starting validation for TSLA with 2514 rows
+2025-08-07 01:48:04,992 - src.data.validator - INFO - Validation complete for TSLA: 2514 clean rows
+2025-08-07 01:48:04,993 - src.data.validator - INFO - Pipeline complete for TSLA: 2514 -> 2514 rows
+2025-08-07 01:48:04,993 - src.data.collector - INFO - Data pipeline: 2514 -> 2514 rows
+2025-08-07 01:48:05,194 - src.data.collector - INFO - Successfully fetched data for TSLA
+2025-08-07 01:48:05,240 - src.models.lstm_predictor - INFO - Adding ENHANCED temporally accurate sentiment features...
+2025-08-07 01:48:05,240 - src.models.lstm_predictor - INFO - Using 5y sentiment with 20 temporal periods
+2025-08-07 01:48:05,240 - src.analysis.sentiment - INFO - Analyzing sentiment for TSLA over 1825 days (5y)
+2025-08-07 01:48:05,240 - src.analysis.sentiment - INFO - Using historical price-based sentiment for 5y period
+2025-08-07 01:48:05,324 - src.analysis.sentiment - INFO - Fetching news sentiment from Alpha Vantage for TSLA
+2025-08-07 01:48:05,708 - src.analysis.sentiment - INFO - Alpha Vantage response keys: ['items', 'sentiment_score_definition', 'relevance_score_definition', 'feed']
+2025-08-07 01:48:05,708 - src.analysis.sentiment - INFO - Found 50 news items
+2025-08-07 01:48:05,711 - src.analysis.sentiment - INFO - Historical sentiment for TSLA: 0.567 (trend: 1.000, momentum: 0.566, confidence: 1.000, news: 50)
+2025-08-07 01:48:05,725 - src.models.lstm_predictor - INFO - Added ENHANCED temporal sentiment: periods=20, avg_sentiment=0.561, confidence=1.000, news_count=50
+2025-08-07 01:48:05,725 - src.models.lstm_predictor - INFO - Adding comprehensive 5-year earnings features for training period...
+2025-08-07 01:48:05,731 - src.models.lstm_predictor - INFO - Requesting 39 earnings periods for 10.0 years of data
+2025-08-07 01:48:05,731 - src.analysis.fundamentals - INFO - Fetching 39 earnings periods for TSLA
+2025-08-07 01:48:05,876 - src.analysis.fundamentals - INFO - Alpha Vantage: Retrieved 39 earnings events
+2025-08-07 01:48:05,879 - src.models.lstm_predictor - INFO - Found 39 earnings events for comprehensive analysis
+2025-08-07 01:48:05,901 - src.models.lstm_predictor - INFO - Added comprehensive earnings features: beat_rate=0.231, avg_surprise=0.617, volatility=3.419
+2025-08-07 01:48:05,932 - src.models.lstm_predictor - INFO - Generated 100 historical features from 2514 data points
+2025-08-07 01:48:05,932 - src.models.lstm_predictor - INFO - Using 71 features for training: ['Momentum_1d', 'Momentum_3d', 'Momentum_5d', 'Momentum_Quality', 'Momentum_Strength', 'Momentum_Consistency', 'Volatility_5d', 'Volatility_20d', 'Vol_Regime', 'Vol_Ratio', 'Vol_Persistence', 'Vol_Breakout', 'HL_Volatility', 'Mean_Reversion_5d', 'Mean_Reversion_20d', 'Reversion_Divergence', 'Distance_From_SMA20', 'Mean_Reversion_Signal', 'Price_SMA5_Ratio', 'Price_SMA20_Ratio', 'SMA_Cross', 'RSI_Normalized', 'MACD_Histogram', 'BB_Position', 'Returns_Lag1', 'Returns_Lag2', 'Returns_Lag3', 'Price_Acceleration', 'Volume_Ratio', 'Volume_Price_Trend', 'Volume_Breakout', 'Price_Volume', 'VPT_Normalized', 'Price_Efficiency', 'Overall_Sentiment', 'Sentiment_Change', 'Sentiment_Volatility', 'Sentiment_Price_Divergence', 'Sentiment_Momentum', 'Sentiment_Regime', 'Sentiment_Strength', 'Trend_Persistence', 'Trend_Acceleration', 'Multi_Trend_Align', 'Fractal_Efficiency', 'Relative_Strength', 'Sharpe_5d', 'Sharpe_20d', 'Sharpe_Ratio', 'Jump_Score', 'Outlier_Signal', 'Bull_Regime', 'Bear_Regime', 'High_Vol_Regime', 'Stress_Indicator', 'Vol_Term_Structure', 'Month_Effect', 'Quarter_Effect', 'January_Effect', 'December_Effect', 'Quarter_End', 'Spread_Proxy', 'Spread_Anomaly', 'Price_Percentile_20d', 'Price_Percentile_50d', 'Days_To_Earnings', 'Earnings_Beat_History', 'EPS_Growth_Rate', 'Earnings_Surprise_Avg', 'Earnings_Volatility', 'Recent_Earnings_Trend']
+2025-08-07 01:48:05,938 - src.models.lstm_predictor - WARNING - Removing zero-variance features: ['Sentiment_Regime', 'Days_To_Earnings', 'Earnings_Beat_History']
+2025-08-07 01:48:05,941 - src.models.lstm_predictor - INFO - IMPROVED target engineering: Log returns for 1-day movement prediction
+2025-08-07 01:48:05,941 - src.models.lstm_predictor - INFO - Target stats - Mean: 0.001197, Std: 0.036409
+2025-08-07 01:48:05,941 - src.models.lstm_predictor - INFO - Target range - Min: -0.150995, Max: 0.150995
+2025-08-07 01:48:05,941 - src.models.lstm_predictor - INFO - 95th percentile used for clipping: 0.075498
+2025-08-07 01:48:05,955 - src.models.lstm_predictor - INFO - Prepared training data: (2483, 30, 68) features, (2483,) targets
+2025-08-07 01:48:06,106 - src.models.lstm_predictor - INFO - Using StandardScaler for target variable (consistent with features)
+2025-08-07 01:48:06,106 - src.models.lstm_predictor - INFO - Pre-scaling target stats - Mean: 0.001704, Std: 0.035627
+2025-08-07 01:48:06,106 - src.models.lstm_predictor - INFO - Pre-scaling target range - Min: -0.150995, Max: 0.150995
+2025-08-07 01:48:06,107 - src.models.lstm_predictor - INFO - Post-scaling target stats - Train mean: -0.000000, Train std: 1.000000
+2025-08-07 01:48:06,107 - src.models.lstm_predictor - INFO - Post-scaling validation - Val mean: -0.084088, Val std: 0.993140
+2025-08-07 01:48:06,107 - src.models.lstm_predictor - INFO - Data splits - Train: 1738, Val: 372, Test: 373
+2025-08-07 01:48:06,107 - src.models.lstm_predictor - INFO - Target scaling - Train mean: 0.001704, Train std: 0.035627
+2025-08-07 01:48:06,107 - src.models.lstm_predictor - INFO - 🔧 COMPLEX MODEL selected for MAXIMUM LEARNING:
+2025-08-07 01:48:06,107 - src.models.lstm_predictor - INFO -    Features=68, Samples=1738, Data=2514
+2025-08-07 01:48:06,107 - src.models.lstm_predictor - INFO -    Strategy: Multi-layer LSTM + attention for 80%+ accuracy target
+2025-08-07 01:48:06,107 - src.models.lstm_predictor - INFO - Building ENHANCED COMPLEX model with 256 LSTM units for 80%+ accuracy
+2025-08-07 01:48:06,266 - src.models.lstm_predictor - INFO - ENHANCED COMPLEX model built: 1,695,753 parameters
+2025-08-07 01:48:06,266 - src.models.lstm_predictor - INFO - Architecture: 3 LSTM + 2 Attention + 4 Dense layers for maximum learning
+2025-08-07 01:48:06,266 - src.models.lstm_predictor - INFO - Model architecture: 30 time steps, 68 features
+2025-08-07 01:48:06,267 - src.models.lstm_predictor - INFO - Total parameters: 1,695,753
+2025-08-07 01:48:06,267 - src.models.lstm_predictor - INFO - Starting SYSTEM-AWARE INTENSIVE training for 80%+ accuracy target...
+2025-08-07 01:48:06,267 - src.models.lstm_predictor - INFO - Training configuration: {'batch_size': 32, 'epochs': 200, 'patience': 25, 'workers': 1, 'use_multiprocessing': False, 'max_queue_size': 5}

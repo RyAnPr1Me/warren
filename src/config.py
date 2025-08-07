@@ -84,7 +84,7 @@ class ModelConfig:
     max_overfitting_ratio: float = 2.0  # Allow more overfitting tolerance
     
     # Prediction settings
-    prediction_days: int = 15          # Default: 3 weeks (15 trading days) 
+    prediction_days: int = 1           # Realistic: 1 day prediction (next day returns) 
     confidence_level: float = 0.95     # Confidence level for intervals
     
     # Buy/Sell rating thresholds (percentage changes)

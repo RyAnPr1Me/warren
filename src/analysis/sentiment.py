@@ -351,15 +351,56 @@ class NewsCollector:
             return self._get_minimal_sentiment()
     
     def _analyze_text_sentiment(self, text: str) -> float:
-        """Analyze sentiment of text using TextBlob"""
+        """Analyze sentiment of text using enhanced financial sentiment analysis"""
         try:
+            # Try VADER sentiment first (better for financial text)
+            try:
+                from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+                analyzer = SentimentIntensityAnalyzer()
+                vader_scores = analyzer.polarity_scores(text)
+                vader_sentiment = vader_scores['compound']  # -1 to 1 scale
+                
+                # VADER is generally more accurate for financial sentiment
+                if abs(vader_sentiment) > 0.1:  # If VADER has a clear opinion
+                    return float(vader_sentiment)
+            except ImportError:
+                pass
+            
+            # Fallback to TextBlob with financial keyword enhancement
             from textblob import TextBlob
             blob = TextBlob(text)
-            # Access sentiment polarity safely
-            sentiment_obj = blob.sentiment
-            polarity = getattr(sentiment_obj, 'polarity', 0.0)
-            return float(polarity)
-        except Exception:
+            base_sentiment = float(getattr(blob.sentiment, 'polarity', 0.0))
+            
+            # Enhance with financial-specific keywords
+            text_lower = text.lower()
+            
+            # Positive financial keywords
+            positive_keywords = [
+                'bull', 'bullish', 'surge', 'rally', 'gain', 'profit', 'beat', 'exceed', 
+                'strong', 'growth', 'up', 'rise', 'climb', 'soar', 'outperform',
+                'buy', 'upgrade', 'positive', 'optimistic', 'confident'
+            ]
+            
+            # Negative financial keywords  
+            negative_keywords = [
+                'bear', 'bearish', 'drop', 'fall', 'decline', 'loss', 'miss', 'weak',
+                'down', 'plunge', 'crash', 'sell', 'downgrade', 'negative', 'concern',
+                'worry', 'risk', 'uncertainty', 'volatile'
+            ]
+            
+            # Count keyword occurrences
+            positive_count = sum(1 for word in positive_keywords if word in text_lower)
+            negative_count = sum(1 for word in negative_keywords if word in text_lower)
+            
+            # Adjust sentiment based on financial keywords
+            keyword_adjustment = (positive_count - negative_count) * 0.1
+            enhanced_sentiment = base_sentiment + keyword_adjustment
+            
+            # Clamp to [-1, 1] range
+            return max(-1.0, min(1.0, enhanced_sentiment))
+            
+        except Exception as e:
+            logger.warning(f"Error in sentiment analysis: {e}")
             return 0.0
     
     def _get_minimal_sentiment(self) -> Dict:
@@ -577,16 +618,30 @@ class SentimentAnalysisEngine:
     def analyze_sentiment(self, symbol: str, timeframe: str = "7d") -> SentimentMetrics:
         """
         Comprehensive sentiment analysis combining news and social data
+        Enhanced for historical periods up to 5 years
         
         Args:
             symbol: Stock ticker symbol
-            timeframe: Analysis timeframe
+            timeframe: Analysis timeframe (7d, 30d, 1y, 2y, 3y, 5y)
             
         Returns:
             SentimentMetrics object with comprehensive analysis
         """
-        logger.info(f"Analyzing sentiment for {symbol} over {timeframe}")
+        # Map timeframe to days for historical analysis
+        timeframe_days = {
+            "1d": 1, "7d": 7, "30d": 30, "90d": 90,
+            "1y": 365, "2y": 730, "3y": 1095, "5y": 1825
+        }
         
+        days = timeframe_days.get(timeframe, 7)
+        logger.info(f"Analyzing sentiment for {symbol} over {days} days ({timeframe})")
+        
+        # For longer periods (>1 year), use historical price sentiment + recent news
+        if days > 365:
+            logger.info(f"Using historical price-based sentiment for {timeframe} period")
+            return self._get_historical_sentiment_analysis(symbol, days, timeframe)
+        
+        # For recent periods, use news and social data
         # Collect news sentiment
         news_data = self.news_collector.get_news_sentiment(symbol, timeframe)
         
@@ -632,6 +687,100 @@ class SentimentAnalysisEngine:
             'news_component': news_sentiment,
             'social_component': social_sentiment
         }
+    
+    def _get_historical_sentiment_analysis(self, symbol: str, days: int, timeframe: str) -> SentimentMetrics:
+        """
+        Generate historical sentiment analysis using price movements and recent news
+        For periods longer than 1 year where news data is limited
+        """
+        try:
+            import yfinance as yf
+            from datetime import datetime, timedelta
+            
+            # Get historical price data for sentiment proxy
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=days)
+            
+            ticker = yf.Ticker(symbol)
+            hist_data = ticker.history(start=start_date, end=end_date)
+            
+            if len(hist_data) < 100:  # Need reasonable amount of data
+                logger.warning(f"Insufficient historical data for {symbol}, using neutral sentiment")
+                return self._get_neutral_sentiment(timeframe)
+            
+            # Calculate price-based sentiment indicators
+            returns = hist_data['Close'].pct_change().dropna()
+            
+            # Sentiment based on:
+            # 1. Overall return trend
+            total_return = (hist_data['Close'].iloc[-1] / hist_data['Close'].iloc[0]) - 1
+            
+            # 2. Volatility (high volatility = lower confidence)
+            volatility = returns.std()
+            
+            # 3. Recent momentum (last 3 months)
+            recent_period = min(90, len(hist_data) // 4)
+            recent_return = (hist_data['Close'].iloc[-1] / hist_data['Close'].iloc[-recent_period]) - 1
+            
+            # 4. Positive vs negative days ratio
+            positive_days = (returns > 0).sum()
+            negative_days = (returns < 0).sum()
+            total_days = len(returns)
+            
+            # Convert to sentiment score (-1 to 1)
+            trend_sentiment = np.tanh(total_return * 2)  # Scale and bound
+            momentum_sentiment = np.tanh(recent_return * 3)  # More weight on recent
+            
+            # Combined sentiment
+            overall_sentiment = float((trend_sentiment * 0.4 + momentum_sentiment * 0.6))
+            
+            # Confidence based on data quality and consistency
+            confidence = min(1.0, (total_days / 250) * (1 - min(volatility * 10, 0.8)))
+            
+            # Ratios based on positive/negative days
+            bullish_ratio = positive_days / total_days if total_days > 0 else 0.33
+            bearish_ratio = negative_days / total_days if total_days > 0 else 0.33
+            neutral_ratio = 1.0 - bullish_ratio - bearish_ratio
+            
+            # Add some recent news if available
+            recent_news = self.news_collector.get_news_sentiment(symbol, "30d")
+            news_count = recent_news.get('news_count', 0)
+            
+            # Adjust sentiment with recent news if available
+            if news_count > 0:
+                news_sentiment = recent_news.get('overall_sentiment', 0)
+                overall_sentiment = overall_sentiment * 0.7 + news_sentiment * 0.3
+                confidence = min(1.0, confidence + 0.2)  # Boost confidence with news
+            
+            logger.info(f"Historical sentiment for {symbol}: {overall_sentiment:.3f} "
+                       f"(trend: {trend_sentiment:.3f}, momentum: {momentum_sentiment:.3f}, "
+                       f"confidence: {confidence:.3f}, news: {news_count})")
+            
+            return SentimentMetrics(
+                overall_sentiment=overall_sentiment,
+                confidence=confidence,
+                bullish_ratio=bullish_ratio,
+                bearish_ratio=bearish_ratio,
+                neutral_ratio=neutral_ratio,
+                news_count=news_count,
+                timeframe=timeframe
+            )
+            
+        except Exception as e:
+            logger.error(f"Error in historical sentiment analysis for {symbol}: {e}")
+            return self._get_neutral_sentiment(timeframe)
+    
+    def _get_neutral_sentiment(self, timeframe: str) -> SentimentMetrics:
+        """Return neutral sentiment as fallback"""
+        return SentimentMetrics(
+            overall_sentiment=0.0,
+            confidence=0.1,
+            bullish_ratio=0.33,
+            bearish_ratio=0.33,
+            neutral_ratio=0.34,
+            news_count=0,
+            timeframe=timeframe
+        )
     
     def get_sentiment_features(self, symbol: str) -> Dict:
         """

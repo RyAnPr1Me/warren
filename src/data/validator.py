@@ -25,7 +25,7 @@ class ValidationResult:
 class StockDataValidator:
     """Comprehensive stock data validation and cleaning"""
     
-    def __init__(self, min_data_points: int = 500):
+    def __init__(self, min_data_points: int = 1250):  # ~5 years of trading days (252 * 5)
         self.min_data_points = min_data_points
         
     def validate_and_clean(self, data: pd.DataFrame, symbol: str) -> ValidationResult:
