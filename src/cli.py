@@ -90,10 +90,14 @@ Examples:
         data_parser.add_argument('--save', action='store_true', help='Save data to CSV file')
         
         # Train command
-        train_parser = subparsers.add_parser('train', help='Train LSTM prediction model')
+        train_parser = subparsers.add_parser('train', help='Train LSTM and ensemble prediction models')
         train_parser.add_argument('symbol', help='Stock ticker symbol')
-        train_parser.add_argument('--period', default='3y', help='Training data period (1y, 2y, 3y, 5y)')
+        train_parser.add_argument('--period', default='3y', help='Training data period (1y, 2y, 3y, 5y, max)')
         train_parser.add_argument('--force', action='store_true', help='Force retrain even if model exists')
+        train_parser.add_argument('--lstm-only', action='store_true', help='Train only LSTM model (skip ensemble)')
+        train_parser.add_argument('--ensemble-only', action='store_true', help='Train only ensemble models (requires existing LSTM)')
+        train_parser.add_argument('--no-ensemble', action='store_true', help='Skip ensemble training (same as --lstm-only)')
+        train_parser.add_argument('--mega-data', action='store_true', help='Use maximum data from ALL APIs for training')
         
         # Predict command
         predict_parser = subparsers.add_parser('predict', help='AI-powered stock price prediction')
@@ -301,69 +305,176 @@ Examples:
         print("   ✅ Data download complete!")
     
     def _handle_train(self, args):
-        """Handle model training command with quality validation"""
+        """Handle model training command with quality validation and ensemble training"""
         symbol = args.symbol.upper()
         period = args.period
+        use_mega_data = args.mega_data
         
-        print(f"\n🧠 Training Enhanced LSTM model for {symbol}...")
+        # Determine training mode
+        train_lstm = not args.ensemble_only
+        train_ensemble = not (args.lstm_only or args.no_ensemble or args.ensemble_only)
+        train_ensemble_only = args.ensemble_only
+        
+        if use_mega_data:
+            period = "max"  # Force maximum data when mega-data is requested
+            print(f"\n🚀 MEGA DATA MODE: Collecting maximum historical data from ALL APIs!")
+            print(f"📊 This will gather comprehensive data from Alpha Vantage, FMP, Finnhub")
+            print(f"💾 Expect 10-20+ years of data with enhanced features")
+        
+        if train_ensemble_only:
+            print(f"\n🤖 Training Ensemble Models only for {symbol}...")
+        elif train_lstm and train_ensemble:
+            print(f"\n🧠 Training Enhanced LSTM + Ensemble models for {symbol}...")
+        elif train_lstm:
+            print(f"\n🧠 Training Enhanced LSTM model only for {symbol}...")
+        
         print(f"📊 Using {period} of historical data")
+        if use_mega_data:
+            print(f"🔥 MEGA DATA: Enhanced with multi-API comprehensive dataset")
         print(f"🎯 Training for 3-week (15 day) predictions")
         
+        lstm_success = False
+        
         try:
-            # Create predictor with default 15-day prediction
-            predictor = create_enhanced_predictor(symbol)
-            
-            # Check if model already exists (but still allow retraining since we have quality validation now)
-            if predictor.model_path.exists() and not args.force:
-                print(f"⚠️  Model already exists for {symbol}")
-                print(f"   Use --force to retrain or check model performance with: python cli.py model-info {symbol}")
-                return
-            
-            # Start training with quality validation
-            print(f"🔄 Training in progress... This may take several minutes.")
-            print(f"🔍 Quality validation enabled - poor models will be automatically deleted")
-            
-            result = predictor.train_enhanced_model(period)
-            
-            # Handle validation results
-            if 'error' in result:
-                if result.get('validation_failed'):
-                    print(f"\n❌ Model Quality Validation Failed!")
-                    print(f"Reason: {result['error']}")
-                    if 'r2_score' in result:
-                        print(f"R² Score: {result['r2_score']:.3f} (minimum required: 0.3)")
-                    if 'recommendation' in result:
-                        print(f"💡 {result['recommendation']}")
-                    print(f"\n🗑️ Poor quality model automatically deleted")
+            # === LSTM TRAINING PHASE ===
+            if train_lstm:
+                # Create predictor with default 15-day prediction
+                predictor = create_enhanced_predictor(symbol)
+                
+                # Check if model already exists (but still allow retraining since we have quality validation now)
+                if predictor.model_path.exists() and not args.force:
+                    print(f"⚠️  LSTM Model already exists for {symbol}")
+                    print(f"   Use --force to retrain or check model performance with: python cli.py model-info {symbol}")
+                    if not train_ensemble_only:
+                        return
+                    lstm_success = True  # Assume existing model is good for ensemble training
                 else:
-                    print(f"\n❌ Training failed: {result['error']}")
-                return
+                    # Start training with quality validation
+                    print(f"🔄 LSTM Training in progress... This may take several minutes.")
+                    print(f"🔍 Quality validation enabled - poor models will be automatically deleted")
+                    
+                    result = predictor.train_enhanced_model(period, mega_data=use_mega_data)
+                    
+                    # Handle validation results
+                    if 'error' in result:
+                        if result.get('validation_failed'):
+                            print(f"\n❌ LSTM Model Quality Validation Failed!")
+                            print(f"Reason: {result['error']}")
+                            if 'r2_score' in result:
+                                print(f"R² Score: {result['r2_score']:.3f} (minimum required: 0.3)")
+                            if 'recommendation' in result:
+                                print(f"💡 {result['recommendation']}")
+                            print(f"\n🗑️ Poor quality model automatically deleted")
+                        else:
+                            print(f"\n❌ LSTM Training failed: {result['error']}")
+                        
+                        if train_ensemble:
+                            print(f"⚠️  Skipping ensemble training due to LSTM failure")
+                        return
+                    
+                    # Success - display comprehensive results
+                    print(f"\n✅ LSTM Model training completed successfully!")
+                    print(f"📈 LSTM Model Performance:")
+                    print(f"   Validation R² Score: {result.get('val_r2', 0):.4f}")
+                    print(f"   Test R² Score: {result.get('test_r2', 0):.4f}")
+                    print(f"   Validation RMSE: ${result.get('val_rmse', 0):.2f}")
+                    print(f"   Validation MAE: ${result.get('val_mae', 0):.2f}")
+                    print(f"   Training Time: {result.get('training_time', 0):.1f}s")
+                    print(f"   Epochs Trained: {result.get('epochs_trained', 0)}")
+                    print(f"   Total Parameters: {result.get('total_parameters', 0):,}")
+                    
+                    # Enhanced model quality assessment
+                    r2_score = result.get('val_r2', 0)
+                    if r2_score >= 0.8:
+                        quality = "Excellent 🎯"
+                    elif r2_score >= 0.6:
+                        quality = "Good 👍"
+                    elif r2_score >= 0.3:  # Updated threshold to match validation
+                        quality = "Fair 👌"
+                    else:
+                        quality = "Poor ❌ (should not reach here due to validation)"
+                    
+                    print(f"\n🎯 LSTM Model Quality: {quality}")
+                    print(f"📋 LSTM Model saved to: {predictor.model_path}")
+                    lstm_success = True
             
-            # Success - display comprehensive results
-            print(f"\n✅ Model training completed successfully!")
-            print(f"📈 Model Performance:")
-            print(f"   Validation R² Score: {result.get('val_r2', 0):.4f}")
-            print(f"   Test R² Score: {result.get('test_r2', 0):.4f}")
-            print(f"   Validation RMSE: ${result.get('val_rmse', 0):.2f}")
-            print(f"   Validation MAE: ${result.get('val_mae', 0):.2f}")
-            print(f"   Training Time: {result.get('training_time', 0):.1f}s")
-            print(f"   Epochs Trained: {result.get('epochs_trained', 0)}")
-            print(f"   Total Parameters: {result.get('total_parameters', 0):,}")
+            elif train_ensemble_only:
+                # Check if LSTM model exists for ensemble training
+                predictor = create_enhanced_predictor(symbol)
+                if not predictor.model_path.exists():
+                    print(f"❌ No LSTM model found for {symbol}")
+                    print(f"💡 Train LSTM first: python cli.py train {symbol}")
+                    return
+                lstm_success = True
             
-            # Enhanced model quality assessment
-            r2_score = result.get('val_r2', 0)
-            if r2_score >= 0.8:
-                quality = "Excellent 🎯"
-            elif r2_score >= 0.6:
-                quality = "Good 👍"
-            elif r2_score >= 0.3:  # Updated threshold to match validation
-                quality = "Fair 👌"
-            else:
-                quality = "Poor ❌ (should not reach here due to validation)"
+            # === ENSEMBLE TRAINING PHASE ===
+            if (train_ensemble or train_ensemble_only) and lstm_success:
+                print(f"\n" + "="*60)
+                print(f"🤖 Training Ensemble Models for {symbol}...")
+                print(f"📊 Using same {period} of historical data as LSTM")
+                print(f"🔗 Integrating with LSTM predictor features")
+                
+                try:
+                    from src.models.ensemble import create_ensemble_predictor
+                    
+                    ensemble = create_ensemble_predictor(symbol)
+                    ensemble_metrics = ensemble.train_ensemble(period, mega_data=use_mega_data)
+                    
+                    if 'error' in ensemble_metrics:
+                        print(f"⚠️  Ensemble training failed: {ensemble_metrics['error']}")
+                        if train_lstm:
+                            print(f"📝 LSTM model is still available for predictions")
+                    else:
+                        print(f"\n✅ Ensemble training completed successfully!")
+                        print(f"📈 Ensemble Performance:")
+                        print(f"   Ensemble Test R²: {ensemble_metrics['ensemble_test_r2']:.4f}")
+                        print(f"   Ensemble Test RMSE: {ensemble_metrics['ensemble_test_rmse']:.4f}")
+                        print(f"   Features Used: {ensemble_metrics['feature_count']}")
+                        print(f"   Training Samples: {ensemble_metrics['training_samples']:,}")
+                        
+                        print(f"\n🔧 Individual Model Performance:")
+                        for model_name, metrics in ensemble_metrics['individual_models'].items():
+                            print(f"   {model_name}: R² = {metrics['test_r2']:.4f}, RMSE = {metrics['test_rmse']:.4f}")
+                        
+                        print(f"\n⚖️  Model Weights:")
+                        for model_name, weight in ensemble_metrics['model_weights'].items():
+                            print(f"   {model_name}: {weight:.3f}")
+                        
+                        # Ensemble quality assessment
+                        ensemble_r2 = ensemble_metrics['ensemble_test_r2']
+                        if ensemble_r2 >= 0.8:
+                            ensemble_quality = "Excellent 🎯"
+                        elif ensemble_r2 >= 0.6:
+                            ensemble_quality = "Good 👍"
+                        elif ensemble_r2 >= 0.3:
+                            ensemble_quality = "Fair 👌"
+                        else:
+                            ensemble_quality = "Poor ❌"
+                        
+                        print(f"\n🎯 Ensemble Model Quality: {ensemble_quality}")
+                        
+                except ImportError:
+                    print(f"⚠️  Ensemble models not available (missing dependencies)")
+                except Exception as e:
+                    print(f"⚠️  Ensemble training failed: {str(e)}")
+                    if train_lstm:
+                        print(f"📝 LSTM model is still available for predictions")
             
-            print(f"\n🎯 Model Quality: {quality}")
-            print(f"📋 Model saved to: {predictor.model_path}")
-            print(f"\n✨ Model is ready for predictions and AI recommendations!")
+            # === COMPLETION MESSAGE ===
+            print(f"\n" + "="*60)
+            if train_lstm and train_ensemble:
+                print(f"✨ Training Complete! Both LSTM and Ensemble models ready!")
+                print(f"🔮 Use 'python cli.py predict {symbol}' for LSTM predictions")
+                print(f"🤖 Use 'python cli.py ensemble {symbol} --predict' for ensemble predictions")
+                print(f"🚀 Use 'python cli.py advanced {symbol} --use-ensemble' for comprehensive analysis")
+            elif train_lstm:
+                print(f"✨ LSTM Training Complete!")
+                print(f"🔮 Use 'python cli.py predict {symbol}' for predictions")
+                print(f"💡 Add ensemble models: python cli.py train {symbol} --ensemble-only")
+            elif train_ensemble_only:
+                print(f"✨ Ensemble Training Complete!")
+                print(f"🤖 Use 'python cli.py ensemble {symbol} --predict' for ensemble predictions")
+                print(f"🚀 Use 'python cli.py advanced {symbol} --use-ensemble' for comprehensive analysis")
             
         except Exception as e:
             logger.error(f"Training failed for {symbol}: {str(e)}")

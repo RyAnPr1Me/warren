@@ -169,12 +169,13 @@ class EnsemblePredictor:
         logger.info(f"Selected {len(available_features)} features for ensemble models")
         return available_features
     
-    def train_ensemble(self, period: str = "3y") -> Dict:
+    def train_ensemble(self, period: str = "3y", mega_data: bool = False) -> Dict:
         """
         Train the ensemble of models
         
         Args:
             period: Historical data period
+            mega_data: If True, use comprehensive data from all APIs
             
         Returns:
             Training metrics
@@ -182,8 +183,8 @@ class EnsemblePredictor:
         logger.info(f"Training ensemble models for {self.symbol}")
         
         try:
-            # Get historical data
-            stock_data = self.data_collector.get_stock_data(self.symbol, period)
+            # Get historical data with mega_data option
+            stock_data = self.data_collector.get_stock_data(self.symbol, period, mega_data=mega_data)
             prices_df = stock_data.prices
             
             # Prepare features

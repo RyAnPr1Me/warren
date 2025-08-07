@@ -18,16 +18,176 @@ from tensorflow.keras.models import Sequential, Model, load_model
 from tensorflow.keras.layers import (
     LSTM, Dense, Dropout, BatchNormalization, Input,
     MultiHeadAttention, LayerNormalization, GlobalAveragePooling1D,
-    GlobalMaxPooling1D, Concatenate, GaussianNoise
+    GlobalMaxPooling1D, Concatenate, GaussianNoise, Add
 )
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau, LearningRateScheduler, Callback
 from tensorflow.keras import regularizers
 
-class PlateauDetector(Callback):
-    """Custom callback to detect training plateaus and stop early"""
+class PlateauBreakerScheduler(Callback):
+    """
+    Advanced learning rate scheduler designed to break through loss plateaus.
+    Uses cyclical learning rates with restarts when plateaus are detected.
+    """
     
-    def __init__(self, monitor='val_loss', patience=8, min_delta=0.001, verbose=1):
+    def __init__(self, base_lr=1e-4, max_lr=1e-3, step_size=10, mode='triangular2', 
+                 plateau_patience=8, plateau_factor=0.7, restart_factor=3.0, verbose=1):
+        super().__init__()
+        self.base_lr = base_lr
+        self.max_lr = max_lr
+        self.step_size = step_size
+        self.mode = mode
+        self.plateau_patience = plateau_patience
+        self.plateau_factor = plateau_factor
+        self.restart_factor = restart_factor
+        self.verbose = verbose
+        
+        # State tracking
+        self.total_iterations = 0
+        self.cycle = 0
+        self.plateau_count = 0
+        self.best_loss = float('inf')
+        self.plateau_wait = 0
+        
+    def _triangular_lr(self, iteration):
+        """Triangular learning rate policy"""
+        cycle = np.floor(1 + iteration / (2 * self.step_size))
+        x = np.abs(iteration / self.step_size - 2 * cycle + 1)
+        lr = self.base_lr + (self.max_lr - self.base_lr) * np.maximum(0, (1 - x))
+        return lr
+    
+    def _triangular2_lr(self, iteration):
+        """Triangular2 learning rate policy with decay"""
+        cycle = np.floor(1 + iteration / (2 * self.step_size))
+        x = np.abs(iteration / self.step_size - 2 * cycle + 1)
+        lr = self.base_lr + (self.max_lr - self.base_lr) * np.maximum(0, (1 - x)) / float(2 ** (cycle - 1))
+        return lr
+    
+    def _exp_range_lr(self, iteration):
+        """Exponential range learning rate policy"""
+        cycle = np.floor(1 + iteration / (2 * self.step_size))
+        x = np.abs(iteration / self.step_size - 2 * cycle + 1)
+        lr = self.base_lr + (self.max_lr - self.base_lr) * np.maximum(0, (1 - x)) * (0.99999 ** iteration)
+        return lr
+    
+    def on_epoch_begin(self, epoch, logs=None):
+        """Set learning rate at the beginning of each epoch"""
+        # Calculate current learning rate based on policy
+        if self.mode == 'triangular':
+            lr = self._triangular_lr(self.total_iterations)
+        elif self.mode == 'triangular2':
+            lr = self._triangular2_lr(self.total_iterations)
+        elif self.mode == 'exp_range':
+            lr = self._exp_range_lr(self.total_iterations)
+        else:
+            lr = self._triangular2_lr(self.total_iterations)  # Default
+        
+        # Apply the learning rate
+        self.model.optimizer.learning_rate.assign(lr)
+        
+        if self.verbose and epoch % 5 == 0:
+            print(f"Epoch {epoch + 1}: Cyclical LR = {lr:.6f} (Cycle: {self.cycle}, Iteration: {self.total_iterations})")
+    
+    def on_epoch_end(self, epoch, logs=None):
+        """Check for plateaus and trigger restarts if needed"""
+        if logs is None:
+            logs = {}
+        
+        current_loss = logs.get('val_loss', logs.get('loss', float('inf')))
+        
+        # Check for improvement
+        if current_loss < self.best_loss * 0.995:  # 0.5% improvement threshold
+            self.best_loss = current_loss
+            self.plateau_wait = 0
+        else:
+            self.plateau_wait += 1
+        
+        # Trigger plateau-breaking restart
+        if self.plateau_wait >= self.plateau_patience:
+            self.plateau_count += 1
+            self.plateau_wait = 0
+            
+            # Restart with higher maximum learning rate
+            self.max_lr *= self.restart_factor
+            self.base_lr *= self.restart_factor
+            
+            # But cap the learning rates to prevent instability
+            self.max_lr = min(self.max_lr, 0.01)
+            self.base_lr = min(self.base_lr, 0.001)
+            
+            # Reset cycle
+            self.cycle += 1
+            
+            if self.verbose:
+                print(f"🚀 PLATEAU DETECTED! Restart #{self.plateau_count}")
+                print(f"   New LR range: {self.base_lr:.6f} - {self.max_lr:.6f}")
+                print(f"   Best loss so far: {self.best_loss:.6f}")
+        
+        self.total_iterations += 1
+
+
+class AdaptiveLossCallback(Callback):
+    """
+    Dynamically adjusts loss function based on training progress.
+    Switches to more aggressive loss functions when plateaus are detected.
+    """
+    
+    def __init__(self, initial_loss='huber', plateau_patience=15, verbose=1):
+        super().__init__()
+        self.initial_loss = initial_loss
+        self.plateau_patience = plateau_patience
+        self.verbose = verbose
+        
+        # Loss function progression
+        self.loss_functions = ['huber', 'mse', 'mae', 'logcosh']
+        self.current_loss_idx = 0
+        
+        # State tracking
+        self.best_loss = float('inf')
+        self.plateau_wait = 0
+        self.loss_changes = 0
+    
+    def on_epoch_end(self, epoch, logs=None):
+        """Monitor training and switch loss functions if needed"""
+        if logs is None:
+            logs = {}
+            
+        current_loss = logs.get('val_loss', logs.get('loss', float('inf')))
+        
+        # Check for improvement
+        if current_loss < self.best_loss * 0.99:  # 1% improvement threshold
+            self.best_loss = current_loss
+            self.plateau_wait = 0
+        else:
+            self.plateau_wait += 1
+        
+        # Switch loss function if plateau detected
+        if (self.plateau_wait >= self.plateau_patience and 
+            self.current_loss_idx < len(self.loss_functions) - 1):
+            
+            self.current_loss_idx += 1
+            new_loss = self.loss_functions[self.current_loss_idx]
+            
+            # Recompile model with new loss function
+            self.model.compile(
+                optimizer=self.model.optimizer,
+                loss=new_loss,
+                metrics=self.model.compiled_metrics._metrics
+            )
+            
+            self.loss_changes += 1
+            self.plateau_wait = 0
+            
+            if self.verbose:
+                print(f"🔄 LOSS ADAPTATION #{self.loss_changes}: Switching to '{new_loss}' loss function")
+                print(f"   Plateau duration: {self.plateau_patience} epochs")
+                print(f"   Current best loss: {self.best_loss:.6f}")
+
+
+class PlateauDetector(Callback):
+    """Enhanced plateau detector with more sophisticated logic"""
+    
+    def __init__(self, monitor='val_loss', patience=12, min_delta=0.0005, verbose=1):
         super().__init__()
         self.monitor = monitor
         self.patience = patience
@@ -36,8 +196,12 @@ class PlateauDetector(Callback):
         self.wait = 0
         self.best = None
         self.plateau_detected = False
+        self.improvement_history = []
         
     def on_epoch_end(self, epoch, logs=None):
+        if logs is None:
+            return
+            
         current = logs.get(self.monitor)
         if current is None:
             return
@@ -45,6 +209,33 @@ class PlateauDetector(Callback):
         if self.best is None:
             self.best = current
             return
+        
+        # Calculate improvement
+        improvement = self.best - current
+        self.improvement_history.append(improvement)
+        
+        # Keep only recent history
+        if len(self.improvement_history) > 20:
+            self.improvement_history.pop(0)
+        
+        # Check for significant improvement
+        if improvement > self.min_delta:
+            self.best = current
+            self.wait = 0
+            if self.verbose and epoch % 10 == 0:
+                recent_avg = np.mean(self.improvement_history[-5:]) if len(self.improvement_history) >= 5 else improvement
+                print(f"📈 Improving! Current: {current:.6f}, Best: {self.best:.6f}, Recent avg improvement: {recent_avg:.6f}")
+        else:
+            self.wait += 1
+            if self.wait >= self.patience:
+                if not self.plateau_detected:
+                    self.plateau_detected = True
+                    if self.verbose:
+                        recent_avg = np.mean(self.improvement_history[-10:]) if len(self.improvement_history) >= 10 else 0
+                        print(f"⚠️  PLATEAU DETECTED after {self.wait} epochs without improvement")
+                        print(f"   Current: {current:.6f}, Best: {self.best:.6f}")
+                        print(f"   Average recent improvement: {recent_avg:.6f}")
+                        print(f"   Consider early stopping or learning rate adjustment")
             
         # Check if improvement is significant
         if current < self.best - self.min_delta:
@@ -59,7 +250,6 @@ class PlateauDetector(Callback):
                 print(f"\nPlateau detected! No improvement for {self.patience} epochs. Stopping early.")
             self.model.stop_training = True
 
-import tensorflow.keras.backend as K
 import joblib
 import logging
 from pathlib import Path
@@ -163,8 +353,9 @@ class SystemAwareTrainingConfig:
                                 if entries:
                                     cpu_temp = entries[0].current
                                     break
-            except (AttributeError, OSError):
-                # sensors_temperatures not available on all systems
+            except (AttributeError, OSError, Exception):
+                # sensors_temperatures not available on all systems (e.g., macOS)
+                pass
                 pass
             
             if cpu_temp and cpu_temp > 70:
@@ -387,7 +578,7 @@ class EnhancedLSTMPredictor:
         Focuses on direction accuracy and magnitude consistency.
         """
         # Base regression loss (Huber is robust to outliers)
-        base_loss = tf.keras.losses.huber(y_true, y_pred, delta=0.02)
+        base_loss = tf.keras.losses.Huber(delta=0.02)(y_true, y_pred)
         
         # Directional components
         true_direction = tf.sign(y_true)
@@ -571,8 +762,8 @@ class EnhancedLSTMPredictor:
     
     def _calculate_rsi(self, prices: pd.Series, period: int = 14) -> pd.Series:
         """Calculate Relative Strength Index"""
-        delta = prices.diff()
-        gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+        delta = prices.astype(float).diff()
+        gain = delta.where(delta > 0, 0).rolling(window=period).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
         rs = gain / loss
         rsi = 100 - (100 / (1 + rs))
@@ -989,11 +1180,21 @@ class EnhancedLSTMPredictor:
                 
                 for earnings in earnings_data:
                     try:
-                        # Handle timezone-aware datetime objects
-                        if hasattr(earnings.date, 'tz_localize'):
-                            earnings_date = earnings.date.tz_localize(None) if earnings.date.tz else earnings.date
-                        else:
-                            earnings_date = earnings.date
+                        # Handle timezone-aware datetime objects safely
+                        earnings_date = earnings.date
+                        try:
+                            # Try pandas Timestamp timezone handling first
+                            if hasattr(earnings_date, 'tz_localize') and callable(getattr(earnings_date, 'tz_localize', None)):
+                                tz_attr = getattr(earnings_date, 'tz', None)
+                                if tz_attr:
+                                    earnings_date = getattr(earnings_date, 'tz_localize')(None)
+                            # Try datetime timezone handling
+                            elif hasattr(earnings_date, 'replace') and hasattr(earnings_date, 'tzinfo'):
+                                if earnings_date.tzinfo is not None:
+                                    earnings_date = earnings_date.replace(tzinfo=None)
+                        except (AttributeError, TypeError):
+                            # Fallback for any timezone handling issues
+                            pass
                         
                         earnings_dates.append(earnings_date)
                         
@@ -1286,6 +1487,10 @@ class EnhancedLSTMPredictor:
                                        history) -> Dict:
         """Calculate comprehensive model performance metrics with proper scaling"""
         
+        # Check if model is trained before making predictions
+        if self.model is None:
+            raise ValueError("Model not trained yet. Call train_enhanced_model() first.")
+        
         # Make predictions on scaled data (since model was trained on scaled targets)
         train_pred_scaled = self.model.predict(X_train, verbose=0)
         val_pred_scaled = self.model.predict(X_val, verbose=0)
@@ -1331,7 +1536,7 @@ class EnhancedLSTMPredictor:
             'sequence_length': self.sequence_length,
             'prediction_days': self.prediction_days,
             'num_features': X_train.shape[2],
-            'total_parameters': self.model.count_params(),
+            'total_parameters': self.model.count_params() if self.model else 0,
             'training_date': datetime.now().isoformat()
         }
         
@@ -1443,56 +1648,67 @@ class EnhancedLSTMPredictor:
 
     def _build_complex_model(self, input_shape: Tuple[int, int]) -> Model:
         """
-        Build ENHANCED COMPLEX LSTM model optimized for 80%+ accuracy.
+        Build OPTIMIZED COMPLEX LSTM model designed to break through 0.9 loss barrier.
+        Enhanced with advanced optimization techniques for sub-0.9 performance.
         """
-        # ENHANCED configuration for maximum learning capacity
-        lstm_units = 256  # Increased capacity for complex patterns
+        # OPTIMIZED configuration for breaking loss plateaus
+        lstm_units = 192  # Optimized size for better gradient flow
         
-        logger.info(f"Building ENHANCED COMPLEX model with {lstm_units} LSTM units for 80%+ accuracy")
+        logger.info(f"Building PLATEAU-BREAKING COMPLEX model with {lstm_units} LSTM units")
+        logger.info("🚀 Optimized architecture to break through 0.9 loss barrier")
         
         # Functional API for sophisticated attention mechanism
         inputs = Input(shape=input_shape)
         
-        # Enhanced input processing
-        normalized_inputs = LayerNormalization(name='input_normalization')(inputs)
-        # Controlled noise for better generalization
-        noisy_inputs = GaussianNoise(0.01, name='input_noise')(normalized_inputs)
+        # Enhanced input processing with better normalization
+        normalized_inputs = LayerNormalization(epsilon=1e-6, name='input_normalization')(inputs)
+        # Reduced noise for better convergence
+        noisy_inputs = GaussianNoise(0.005, name='input_noise')(normalized_inputs)
         
-        # First LSTM layer - large capacity
+        # First LSTM layer - optimized capacity with residual connections
         lstm1 = LSTM(lstm_units, return_sequences=True, 
-                     dropout=0.2, recurrent_dropout=0.1,
-                     kernel_regularizer=regularizers.l2(0.001),
+                     dropout=0.15, recurrent_dropout=0.05,  # Reduced regularization for better learning
+                     kernel_regularizer=regularizers.l2(0.0005),  # Lighter regularization
+                     activation='tanh',  # Explicit tanh for stability
+                     recurrent_activation='sigmoid',
                      name='lstm_layer_1')(noisy_inputs)
-        lstm1 = LayerNormalization(name='lstm1_norm')(lstm1)
-        lstm1 = Dropout(0.2, name='lstm1_dropout')(lstm1)
+        lstm1 = LayerNormalization(epsilon=1e-6, name='lstm1_norm')(lstm1)
+        lstm1 = Dropout(0.15, name='lstm1_dropout')(lstm1)
         
-        # Second LSTM layer - maintained capacity
+        # Second LSTM layer with skip connection
         lstm2 = LSTM(lstm_units, return_sequences=True,
-                     dropout=0.2, recurrent_dropout=0.1,
-                     kernel_regularizer=regularizers.l2(0.001),
+                     dropout=0.15, recurrent_dropout=0.05,
+                     kernel_regularizer=regularizers.l2(0.0005),
+                     activation='tanh',
+                     recurrent_activation='sigmoid',
                      name='lstm_layer_2')(lstm1)
-        lstm2 = LayerNormalization(name='lstm2_norm')(lstm2)
-        lstm2 = Dropout(0.2, name='lstm2_dropout')(lstm2)
+        lstm2 = LayerNormalization(epsilon=1e-6, name='lstm2_norm')(lstm2)
+        lstm2 = Dropout(0.15, name='lstm2_dropout')(lstm2)
+        
+        # Add residual connection for better gradient flow
+        lstm2_with_residual = Add(name='residual_connection')([lstm1, lstm2])
         
         # Third LSTM layer - focused capacity
         lstm3 = LSTM(lstm_units//2, return_sequences=True,
-                     dropout=0.2, recurrent_dropout=0.1,
-                     kernel_regularizer=regularizers.l2(0.001),
-                     name='lstm_layer_3')(lstm2)
-        lstm3 = LayerNormalization(name='lstm3_norm')(lstm3)
-        lstm3 = Dropout(0.2, name='lstm3_dropout')(lstm3)
+                     dropout=0.1, recurrent_dropout=0.05,
+                     kernel_regularizer=regularizers.l2(0.0005),
+                     activation='tanh',
+                     recurrent_activation='sigmoid',
+                     name='lstm_layer_3')(lstm2_with_residual)
+        lstm3 = LayerNormalization(epsilon=1e-6, name='lstm3_norm')(lstm3)
+        lstm3 = Dropout(0.1, name='lstm3_dropout')(lstm3)
         
-        # Enhanced multi-head attention
+        # OPTIMIZED multi-head attention for pattern recognition
         attention = MultiHeadAttention(
-            num_heads=8,  # More attention heads for pattern recognition
-            key_dim=64,   # Larger key dimension
+            num_heads=6,  # Optimized number of attention heads
+            key_dim=48,   # Balanced key dimension
             dropout=0.1,
             name='multi_head_attention_1'
         )(lstm3, lstm3)
         
-        # Add & norm connection
-        attention_out = LayerNormalization(name='attention1_norm')(lstm3 + attention)
-        attention_out = Dropout(0.2, name='attention1_dropout')(attention_out)
+        # Add & norm connection with better stability
+        attention_out = LayerNormalization(epsilon=1e-6, name='attention1_norm')(lstm3 + attention)
+        attention_out = Dropout(0.1, name='attention1_dropout')(attention_out)
         
         # Second attention layer for deeper pattern recognition
         attention2 = MultiHeadAttention(
@@ -1502,105 +1718,77 @@ class EnhancedLSTMPredictor:
             name='multi_head_attention_2'
         )(attention_out, attention_out)
         
-        attention_out2 = LayerNormalization(name='attention2_norm')(attention_out + attention2)
-        attention_out2 = Dropout(0.2, name='attention2_dropout')(attention_out2)
+        attention_out2 = LayerNormalization(epsilon=1e-6, name='attention2_norm')(attention_out + attention2)
+        attention_out2 = Dropout(0.1, name='attention2_dropout')(attention_out2)
         
-        # Enhanced global pooling
+        # OPTIMIZED global pooling for better information extraction
         avg_pool = GlobalAveragePooling1D(name='global_avg_pool')(attention_out2)
         max_pool = GlobalMaxPooling1D(name='global_max_pool')(attention_out2)
         
         # Combine pooled features
         pooled = Concatenate(name='pooled_features')([avg_pool, max_pool])
-        pooled = Dropout(0.3, name='pooled_dropout')(pooled)
-        pooled = BatchNormalization(name='pooled_batch_norm')(pooled)
+        pooled = Dropout(0.2, name='pooled_dropout')(pooled)  # Reduced dropout
+        pooled = BatchNormalization(momentum=0.99, epsilon=1e-6, name='pooled_batch_norm')(pooled)
         
-        # Enhanced dense layers for pattern recognition
-        dense1 = Dense(512, activation='relu',
-                      kernel_regularizer=regularizers.l2(0.001),
+        # OPTIMIZED dense layers with improved activation functions
+        dense1 = Dense(384, activation='swish',  # Swish activation for better gradients
+                      kernel_regularizer=regularizers.l2(0.0005),  # Lighter regularization
+                      kernel_initializer='he_normal',  # Better initialization
                       name='dense_layer_1')(pooled)
-        dense1 = Dropout(0.3, name='dense1_dropout')(dense1)
-        dense1 = BatchNormalization(name='dense1_batch_norm')(dense1)
+        dense1 = Dropout(0.2, name='dense1_dropout')(dense1)
+        dense1 = BatchNormalization(momentum=0.99, epsilon=1e-6, name='dense1_batch_norm')(dense1)
         
-        dense2 = Dense(256, activation='relu',
-                      kernel_regularizer=regularizers.l2(0.001),
+        dense2 = Dense(192, activation='swish',
+                      kernel_regularizer=regularizers.l2(0.0005),
+                      kernel_initializer='he_normal',
                       name='dense_layer_2')(dense1)
-        dense2 = Dropout(0.3, name='dense2_dropout')(dense2)
-        dense2 = BatchNormalization(name='dense2_batch_norm')(dense2)
+        dense2 = Dropout(0.2, name='dense2_dropout')(dense2)
+        dense2 = BatchNormalization(momentum=0.99, epsilon=1e-6, name='dense2_batch_norm')(dense2)
         
-        dense3 = Dense(128, activation='relu',
-                      kernel_regularizer=regularizers.l2(0.001),
+        dense3 = Dense(96, activation='swish',
+                      kernel_regularizer=regularizers.l2(0.0005),
+                      kernel_initializer='he_normal',
                       name='dense_layer_3')(dense2)
-        dense3 = Dropout(0.3, name='dense3_dropout')(dense3)
-        dense3 = BatchNormalization(name='dense3_batch_norm')(dense3)
+        dense3 = Dropout(0.15, name='dense3_dropout')(dense3)
+        dense3 = BatchNormalization(momentum=0.99, epsilon=1e-6, name='dense3_batch_norm')(dense3)
         
-        # Final processing layer
-        pre_output = Dense(64, activation='relu',
-                          kernel_regularizer=regularizers.l2(0.001),
+        # Final processing layer with residual connection
+        pre_output = Dense(48, activation='swish',
+                          kernel_regularizer=regularizers.l2(0.0005),
+                          kernel_initializer='he_normal',
                           name='pre_output_layer')(dense3)
-        pre_output = Dropout(0.2, name='pre_output_dropout')(pre_output)
+        pre_output = Dropout(0.1, name='pre_output_dropout')(pre_output)
         
-        # Output layer
-        outputs = Dense(1, activation='linear', name='output_layer')(pre_output)
+        # Output layer with careful initialization
+        outputs = Dense(1, activation='linear', 
+                       kernel_initializer='glorot_normal',
+                       name='output_layer')(pre_output)
         
         # Create model
         model = Model(inputs=inputs, outputs=outputs)
         
-        # Enhanced optimizer for complex patterns
-        optimizer = Adam(learning_rate=0.001, clipnorm=1.0, beta_1=0.9, beta_2=0.999)
+        # OPTIMIZED optimizer for breaking loss plateaus
+        optimizer = Adam(
+            learning_rate=0.001,      # Balanced initial LR
+            clipnorm=0.8,             # Tighter gradient clipping
+            beta_1=0.9,               # Standard momentum
+            beta_2=0.999,             # Standard adaptive
+            epsilon=1e-7,             # Smaller epsilon for stability
+            amsgrad=True              # Use AMSGrad for better convergence
+        )
         
-        # MSE loss for R² optimization
-        model.compile(optimizer=optimizer, loss='mse', metrics=['mae', 'mse'])
+        # Enhanced loss function optimized for convergence
+        model.compile(
+            optimizer=optimizer, 
+            loss='huber',             # Huber loss for robustness
+            metrics=['mae', 'mse']
+        )
         
-        logger.info(f"ENHANCED COMPLEX model built: {model.count_params():,} parameters")
-        logger.info("Architecture: 3 LSTM + 2 Attention + 4 Dense layers for maximum learning")
+        logger.info(f"PLATEAU-BREAKING COMPLEX model built: {model.count_params():,} parameters")
+        logger.info("🔥 Architecture optimized to break through 0.9 loss barrier")
+        logger.info("🚀 Features: Residual connections, Swish activation, AMSGrad optimizer, Huber loss")
         
         return model
-        
-        # Functional API for complex attention mechanism
-        inputs = Input(shape=input_shape)
-        
-        # Light input normalization (no excessive noise)
-        normalized_inputs = LayerNormalization(name='input_normalization')(inputs)
-        # Minimal noise during training
-        noisy_inputs = GaussianNoise(0.005, name='input_noise')(normalized_inputs)  # Reduced noise
-        noisy_inputs = Dropout(0.05, name='input_dropout')(noisy_inputs)  # Light initial dropout
-        
-        # First LSTM layer with LIGHT regularization
-        lstm1 = LSTM(lstm_units, return_sequences=True, 
-                     dropout=0.1, recurrent_dropout=0.1,  # Light dropouts
-                     kernel_regularizer=regularizers.l1_l2(l1=0.0001, l2=0.002),  # Light L1/L2
-                     recurrent_regularizer=regularizers.l2(0.001),  # Light recurrent
-                     name='lstm_layer_1')(noisy_inputs)
-        lstm1 = LayerNormalization(name='lstm1_norm')(lstm1)
-        lstm1 = Dropout(0.15, name='lstm1_dropout')(lstm1)  # Light dropout
-        
-        # Second LSTM layer with MODERATE regularization
-        lstm2 = LSTM(lstm_units//2, return_sequences=True,  # Reduced capacity
-                     dropout=0.2, recurrent_dropout=0.15,  # Moderate dropouts
-                     kernel_regularizer=regularizers.l1_l2(l1=0.0002, l2=0.005),  # Moderate L1/L2
-                     recurrent_regularizer=regularizers.l2(0.003),  # Moderate recurrent
-                     name='lstm_layer_2')(lstm1)
-        lstm2 = LayerNormalization(name='lstm2_norm')(lstm2)
-        lstm2 = Dropout(0.25, name='lstm2_dropout')(lstm2)  # Moderate dropout
-        
-        # Third LSTM layer with CONTROLLED regularization
-        lstm3 = LSTM(lstm_units//4, return_sequences=True,  # Further reduced capacity
-                     dropout=0.25, recurrent_dropout=0.2,  # Controlled dropouts
-                     kernel_regularizer=regularizers.l1_l2(l1=0.0005, l2=0.01),  # Controlled L1/L2
-                     recurrent_regularizer=regularizers.l2(0.005),  # Controlled recurrent
-                     name='lstm_layer_3')(lstm2)
-        lstm3 = LayerNormalization(name='lstm3_norm')(lstm3)
-        lstm3 = Dropout(0.3, name='lstm3_dropout')(lstm3)  # Controlled dropout for deep layers
-        
-        # Multi-head attention with light regularization
-        attention = MultiHeadAttention(
-            num_heads=4,  # Keep 4 heads for complexity
-            key_dim=lstm_units//16,  # Reasonable key dimension
-            dropout=0.15,  # Light attention dropout
-            name='multi_head_attention_1'
-        )(lstm3, lstm3)
-        
-        # Add & norm connection with moderate regularization
         attention_out = LayerNormalization(name='attention1_norm')(lstm3 + attention)
         attention_out = Dropout(0.2, name='attention1_dropout')(attention_out)  # Moderate dropout
         
@@ -1678,12 +1866,13 @@ class EnhancedLSTMPredictor:
         
         return model
     
-    def train_enhanced_model(self, period: str = "3y") -> Dict:
+    def train_enhanced_model(self, period: str = "3y", mega_data: bool = False) -> Dict:
         """
         Train enhanced LSTM model with quality validation and automatic cleanup
         
         Args:
             period: Period of historical data to use for training (default: 3y for better performance)
+            mega_data: If True, collect comprehensive data from all available APIs
             
         Returns:
             Dictionary with detailed training metrics or error information
@@ -1697,7 +1886,7 @@ class EnhancedLSTMPredictor:
             start_time = time.time()
             
             # Get comprehensive historical data
-            stock_data = self.data_collector.get_stock_data(self.symbol, period)
+            stock_data = self.data_collector.get_stock_data(self.symbol, period, mega_data=mega_data)
             prices_df = stock_data.prices
             
             if len(prices_df) < self.sequence_length + 100:
@@ -1796,41 +1985,53 @@ class EnhancedLSTMPredictor:
             logger.info(f"Model architecture: {X.shape[1]} time steps, {X.shape[2]} features")
             logger.info(f"Total parameters: {self.model.count_params():,}")
             
-            # Enhanced callbacks for SYSTEM-AWARE INTENSIVE training to achieve 80%+ accuracy
+            # ENHANCED callbacks for PLATEAU-BREAKING training to break through 0.9 loss barrier
             callbacks = [
-                # System-aware early stopping
+                # Advanced plateau-breaking learning rate scheduler
+                PlateauBreakerScheduler(
+                    base_lr=5e-5,           # Lower base for stability
+                    max_lr=2e-3,            # Higher max for exploration
+                    step_size=8,            # Faster cycles
+                    mode='triangular2',      # Decaying triangular
+                    plateau_patience=6,      # Quick plateau detection
+                    plateau_factor=0.6,      # Aggressive reduction
+                    restart_factor=2.5,      # Strong restart boost
+                    verbose=1
+                ),
+                
+                # Adaptive loss function callback
+                AdaptiveLossCallback(
+                    initial_loss='huber',
+                    plateau_patience=12,
+                    verbose=1
+                ),
+                
+                # Enhanced plateau detector
+                PlateauDetector(
+                    monitor='val_loss',
+                    patience=10,
+                    min_delta=0.0002,       # Tighter improvement threshold
+                    verbose=1
+                ),
+                
+                # System-aware early stopping with more patience
                 EarlyStopping(
                     monitor='val_loss',
-                    patience=self.system_config.training_config["patience"],
+                    patience=self.system_config.training_config["patience"] + 10,  # Extra patience
                     verbose=1,
                     restore_best_weights=True,
-                    min_delta=0.0001  # Smaller threshold for continued learning
+                    min_delta=0.00005       # Very fine improvement threshold
                 ),
+                
                 # Model checkpoint for best weights
                 ModelCheckpoint(
                     str(self.model_path),
                     monitor='val_loss',
                     save_best_only=True,
-                    verbose=0
+                    verbose=0,
+                    save_weights_only=False
                 ),
-                # Adaptive learning rate with system-aware patience
-                ReduceLROnPlateau(
-                    monitor='val_loss',
-                    factor=0.7,  # Less aggressive reduction
-                    patience=max(10, self.system_config.training_config["patience"] // 2),
-                    min_lr=1e-6,
-                    verbose=1
-                ),
-                # Custom intelligent scheduler for complex training
-                IntelligentLRScheduler(
-                    initial_lr=0.001,
-                    warmup_epochs=10,     # Longer warmup
-                    cosine_epochs=80,     # Extended cosine annealing
-                    min_lr_factor=0.01,
-                    patience=15,          # Much more patience
-                    factor=0.7,
-                    verbose=1
-                ),
+                
                 # Thermal throttling for system safety
                 ThermalThrottlingCallback(
                     temp_threshold=80 if self.system_config.thermal_profile != "performance" else 85,
@@ -1838,9 +2039,10 @@ class EnhancedLSTMPredictor:
                 )
             ]
             
-            # SYSTEM-AWARE INTENSIVE training for maximum learning and 80%+ accuracy
+            # PLATEAU-BREAKING INTENSIVE training with advanced optimization
             training_config = self.system_config.training_config
-            logger.info("Starting SYSTEM-AWARE INTENSIVE training for 80%+ accuracy target...")
+            logger.info("🚀 Starting PLATEAU-BREAKING training optimized to break through 0.9 loss barrier...")
+            logger.info("🔥 Enhanced with: Cyclical LR, Adaptive Loss, Residual Connections, AMSGrad")
             logger.info(f"Training configuration: {training_config}")
             
             history = self.model.fit(

@@ -34,8 +34,8 @@ class TechnicalAnalyzer:
         Returns:
             Series with RSI values
         """
-        delta = prices.diff()
-        gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+        delta = prices.astype(float).diff()
+        gain = delta.where(delta > 0, 0).rolling(window=period).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
         
         rs = gain / loss
@@ -129,8 +129,9 @@ class TechnicalAnalyzer:
         # Volume Rate of Change
         volume_roc = volume.pct_change(periods=10) * 100
         
-        # On-Balance Volume (OBV)
-        obv = (volume * ((close.diff() > 0).astype(int) - (close.diff() < 0).astype(int))).cumsum()
+        # On-Balance Volume (OBV) - Fix pandas comparison
+        close_diff = close.astype(float).diff()
+        obv = (volume * ((close_diff > 0).astype(int) - (close_diff < 0).astype(int))).cumsum()
         
         return {
             'volume_ma': volume_ma,

@@ -1745,3 +1745,569 @@
 2025-08-07 01:48:06,267 - src.models.lstm_predictor - INFO - Total parameters: 1,695,753
 2025-08-07 01:48:06,267 - src.models.lstm_predictor - INFO - Starting SYSTEM-AWARE INTENSIVE training for 80%+ accuracy target...
 2025-08-07 01:48:06,267 - src.models.lstm_predictor - INFO - Training configuration: {'batch_size': 32, 'epochs': 200, 'patience': 25, 'workers': 1, 'use_multiprocessing': False, 'max_queue_size': 5}
+2025-08-07 02:07:41,368 - src.models.lstm_predictor - INFO - No GPU found, using CPU
+2025-08-07 02:07:42,373 - src.models.lstm_predictor - INFO - System detected: laptop
+2025-08-07 02:07:42,374 - src.models.lstm_predictor - INFO - GPU available: False
+2025-08-07 02:07:42,374 - src.models.lstm_predictor - INFO - Thermal profile: balanced
+2025-08-07 02:07:42,374 - src.models.lstm_predictor - INFO - Initialized Enhanced LSTM for TSLA
+2025-08-07 02:07:42,374 - src.models.lstm_predictor - INFO - System: laptop (balanced thermal profile)
+2025-08-07 02:07:42,374 - src.models.lstm_predictor - INFO - GPU Available: False
+2025-08-07 02:07:42,374 - src.models.lstm_predictor - INFO - Training Config: {'batch_size': 32, 'epochs': 200, 'patience': 25, 'workers': 1, 'use_multiprocessing': False, 'max_queue_size': 5}
+2025-08-07 02:09:01,333 - src.models.lstm_predictor - INFO - No GPU found, using CPU
+2025-08-07 02:09:02,339 - src.models.lstm_predictor - INFO - System detected: laptop
+2025-08-07 02:09:02,339 - src.models.lstm_predictor - INFO - GPU available: False
+2025-08-07 02:09:02,340 - src.models.lstm_predictor - INFO - Thermal profile: balanced
+2025-08-07 02:09:02,340 - src.models.lstm_predictor - INFO - Initialized Enhanced LSTM for TSLA
+2025-08-07 02:09:02,340 - src.models.lstm_predictor - INFO - System: laptop (balanced thermal profile)
+2025-08-07 02:09:02,340 - src.models.lstm_predictor - INFO - GPU Available: False
+2025-08-07 02:09:02,340 - src.models.lstm_predictor - INFO - Training Config: {'batch_size': 32, 'epochs': 200, 'patience': 25, 'workers': 1, 'use_multiprocessing': False, 'max_queue_size': 5}
+2025-08-07 02:09:02,340 - src.models.lstm_predictor - INFO - Starting enhanced training for TSLA
+2025-08-07 02:09:02,341 - src.data.collector - INFO - Fetching fresh data for TSLA (2y)
+2025-08-07 02:09:02,942 - src.data.collector - INFO - Running data validation pipeline for TSLA
+2025-08-07 02:09:02,943 - src.data.validator - INFO - Starting validation for TSLA with 502 rows
+2025-08-07 02:09:02,964 - src.data.validator - INFO - Validation complete for TSLA: 502 clean rows
+2025-08-07 02:09:02,964 - src.data.validator - INFO - Pipeline complete for TSLA: 502 -> 502 rows
+2025-08-07 02:09:02,965 - src.data.collector - INFO - Data pipeline: 502 -> 502 rows
+2025-08-07 02:09:03,168 - src.data.collector - INFO - Successfully fetched data for TSLA
+2025-08-07 02:09:03,198 - src.models.lstm_predictor - INFO - Adding ENHANCED temporally accurate sentiment features...
+2025-08-07 02:09:03,198 - src.models.lstm_predictor - INFO - Using 2y sentiment with 7 temporal periods
+2025-08-07 02:09:03,198 - src.analysis.sentiment - INFO - Analyzing sentiment for TSLA over 730 days (2y)
+2025-08-07 02:09:03,199 - src.analysis.sentiment - INFO - Using historical price-based sentiment for 2y period
+2025-08-07 02:09:03,275 - src.analysis.sentiment - INFO - Fetching news sentiment from Alpha Vantage for TSLA
+2025-08-07 02:09:03,747 - src.analysis.sentiment - INFO - Alpha Vantage response keys: ['items', 'sentiment_score_definition', 'relevance_score_definition', 'feed']
+2025-08-07 02:09:03,748 - src.analysis.sentiment - INFO - Found 50 news items
+2025-08-07 02:09:03,751 - src.analysis.sentiment - INFO - Historical sentiment for TSLA: 0.430 (trend: 0.510, momentum: 0.566, confidence: 1.000, news: 50)
+2025-08-07 02:09:03,763 - src.models.lstm_predictor - INFO - Added ENHANCED temporal sentiment: periods=7, avg_sentiment=0.423, confidence=1.000, news_count=50
+2025-08-07 02:09:03,763 - src.models.lstm_predictor - INFO - Adding comprehensive 5-year earnings features for training period...
+2025-08-07 02:09:03,780 - src.models.lstm_predictor - INFO - Requesting 8 earnings periods for 2.0 years of data
+2025-08-07 02:09:03,780 - src.analysis.fundamentals - INFO - Fetching 8 earnings periods for TSLA
+2025-08-07 02:09:03,932 - src.analysis.fundamentals - INFO - Alpha Vantage: Retrieved 8 earnings events
+2025-08-07 02:09:03,935 - src.models.lstm_predictor - INFO - Found 8 earnings events for comprehensive analysis
+2025-08-07 02:09:03,941 - src.models.lstm_predictor - INFO - Added comprehensive earnings features: beat_rate=-0.750, avg_surprise=-0.069, volatility=0.150
+2025-08-07 02:09:03,960 - src.models.lstm_predictor - INFO - Generated 100 historical features from 502 data points
+2025-08-07 02:09:03,960 - src.models.lstm_predictor - INFO - Using 71 features for training: ['Momentum_1d', 'Momentum_3d', 'Momentum_5d', 'Momentum_Quality', 'Momentum_Strength', 'Momentum_Consistency', 'Volatility_5d', 'Volatility_20d', 'Vol_Regime', 'Vol_Ratio', 'Vol_Persistence', 'Vol_Breakout', 'HL_Volatility', 'Mean_Reversion_5d', 'Mean_Reversion_20d', 'Reversion_Divergence', 'Distance_From_SMA20', 'Mean_Reversion_Signal', 'Price_SMA5_Ratio', 'Price_SMA20_Ratio', 'SMA_Cross', 'RSI_Normalized', 'MACD_Histogram', 'BB_Position', 'Returns_Lag1', 'Returns_Lag2', 'Returns_Lag3', 'Price_Acceleration', 'Volume_Ratio', 'Volume_Price_Trend', 'Volume_Breakout', 'Price_Volume', 'VPT_Normalized', 'Price_Efficiency', 'Overall_Sentiment', 'Sentiment_Change', 'Sentiment_Volatility', 'Sentiment_Price_Divergence', 'Sentiment_Momentum', 'Sentiment_Regime', 'Sentiment_Strength', 'Trend_Persistence', 'Trend_Acceleration', 'Multi_Trend_Align', 'Fractal_Efficiency', 'Relative_Strength', 'Sharpe_5d', 'Sharpe_20d', 'Sharpe_Ratio', 'Jump_Score', 'Outlier_Signal', 'Bull_Regime', 'Bear_Regime', 'High_Vol_Regime', 'Stress_Indicator', 'Vol_Term_Structure', 'Month_Effect', 'Quarter_Effect', 'January_Effect', 'December_Effect', 'Quarter_End', 'Spread_Proxy', 'Spread_Anomaly', 'Price_Percentile_20d', 'Price_Percentile_50d', 'Days_To_Earnings', 'Earnings_Beat_History', 'EPS_Growth_Rate', 'Earnings_Surprise_Avg', 'Earnings_Volatility', 'Recent_Earnings_Trend']
+2025-08-07 02:09:03,963 - src.models.lstm_predictor - WARNING - Removing zero-variance features: ['Sentiment_Regime', 'Days_To_Earnings', 'Earnings_Beat_History', 'EPS_Growth_Rate', 'Earnings_Surprise_Avg']
+2025-08-07 02:09:03,964 - src.models.lstm_predictor - INFO - IMPROVED target engineering: Log returns for 1-day movement prediction
+2025-08-07 02:09:03,964 - src.models.lstm_predictor - INFO - Target stats - Mean: 0.000320, Std: 0.038769
+2025-08-07 02:09:03,964 - src.models.lstm_predictor - INFO - Target range - Min: -0.154628, Max: 0.154628
+2025-08-07 02:09:03,964 - src.models.lstm_predictor - INFO - 95th percentile used for clipping: 0.077314
+2025-08-07 02:09:03,966 - src.models.lstm_predictor - INFO - Prepared training data: (471, 30, 66) features, (471,) targets
+2025-08-07 02:09:03,999 - src.models.lstm_predictor - INFO - Using StandardScaler for target variable (consistent with features)
+2025-08-07 02:09:03,999 - src.models.lstm_predictor - INFO - Pre-scaling target stats - Mean: 0.001062, Std: 0.036616
+2025-08-07 02:09:03,999 - src.models.lstm_predictor - INFO - Pre-scaling target range - Min: -0.131643, Max: 0.154628
+2025-08-07 02:09:03,999 - src.models.lstm_predictor - INFO - Post-scaling target stats - Train mean: 0.000000, Train std: 1.000000
+2025-08-07 02:09:04,000 - src.models.lstm_predictor - INFO - Post-scaling validation - Val mean: -0.220465, Val std: 1.345337
+2025-08-07 02:09:04,000 - src.models.lstm_predictor - INFO - Data splits - Train: 329, Val: 70, Test: 72
+2025-08-07 02:09:04,000 - src.models.lstm_predictor - INFO - Target scaling - Train mean: 0.001062, Train std: 0.036616
+2025-08-07 02:09:04,000 - src.models.lstm_predictor - INFO - 🔧 SIMPLIFIED MODEL selected:
+2025-08-07 02:09:04,000 - src.models.lstm_predictor - INFO -    Reason: Limited samples=329
+2025-08-07 02:09:04,000 - src.models.lstm_predictor - INFO -    Strategy: Single LSTM + 2 Dense layers
+2025-08-07 02:09:04,000 - src.models.lstm_predictor - INFO - Building SIMPLIFIED model optimized for R² performance
+2025-08-07 02:09:04,087 - src.models.lstm_predictor - INFO - SIMPLIFIED model built: 36,293 parameters
+2025-08-07 02:09:04,088 - src.models.lstm_predictor - INFO - Architecture: Single LSTM + 2 Dense layers, optimized for R² performance
+2025-08-07 02:09:04,088 - src.models.lstm_predictor - INFO - Model architecture: 30 time steps, 66 features
+2025-08-07 02:09:04,088 - src.models.lstm_predictor - INFO - Total parameters: 36,293
+2025-08-07 02:09:04,088 - src.models.lstm_predictor - INFO - Starting SYSTEM-AWARE INTENSIVE training for 80%+ accuracy target...
+2025-08-07 02:09:04,088 - src.models.lstm_predictor - INFO - Training configuration: {'batch_size': 32, 'epochs': 200, 'patience': 25, 'workers': 1, 'use_multiprocessing': False, 'max_queue_size': 5}
+2025-08-07 02:09:27,404 - src.models.lstm_predictor - WARNING - High validation loss detected: 2.2763 - model may be poor quality
+2025-08-07 02:09:27,773 - src.models.lstm_predictor - INFO - Model passed quality validation: Financial metrics passed: 7/7 checks
+✓ Val direction accuracy: 0.571
+✓ Test direction accuracy: 0.542
+✓ Val IC: 0.0228
+✓ Test IC: 0.1324
+✓ Val R²: -0.0697
+✓ Test R²: -0.0209
+✓ No severe overfitting
+2025-08-07 02:09:27,799 - src.models.lstm_predictor - INFO - Metrics saved to data/models/TSLA/TSLA_metrics.json
+2025-08-07 02:09:27,799 - src.models.lstm_predictor - INFO - ================================================================================
+2025-08-07 02:09:27,799 - src.models.lstm_predictor - INFO - COMPREHENSIVE MODEL EVALUATION
+2025-08-07 02:09:27,799 - src.models.lstm_predictor - INFO - ================================================================================
+2025-08-07 02:09:27,799 - src.models.lstm_predictor - INFO - 🎯 TRAINING PERFORMANCE:
+2025-08-07 02:09:27,799 - src.models.lstm_predictor - INFO -    Training Time: 25.5s
+2025-08-07 02:09:27,799 - src.models.lstm_predictor - INFO -    Epochs Trained: 120
+2025-08-07 02:09:27,799 - src.models.lstm_predictor - INFO -    Model Parameters: 36,293
+2025-08-07 02:09:27,799 - src.models.lstm_predictor - INFO -    Features Used: 66
+2025-08-07 02:09:27,799 - src.models.lstm_predictor - INFO - 📊 R² SCORE ANALYSIS:
+2025-08-07 02:09:27,799 - src.models.lstm_predictor - INFO -    Validation R²: -0.0697
+2025-08-07 02:09:27,799 - src.models.lstm_predictor - INFO -    Test R²: -0.0209
+2025-08-07 02:09:27,799 - src.models.lstm_predictor - INFO -    Overfitting Gap: 0.0488
+2025-08-07 02:09:27,800 - src.models.lstm_predictor - INFO -    R² Assessment: ⚠️ BELOW AVERAGE - Still within normal range
+2025-08-07 02:09:27,800 - src.models.lstm_predictor - INFO - 💰 FINANCIAL PERFORMANCE:
+2025-08-07 02:09:27,800 - src.models.lstm_predictor - INFO -    Validation Direction Accuracy: 57.1%
+2025-08-07 02:09:27,800 - src.models.lstm_predictor - INFO -    Test Direction Accuracy: 54.2%
+2025-08-07 02:09:27,800 - src.models.lstm_predictor - INFO -    Validation Information Coefficient: 0.0228
+2025-08-07 02:09:27,800 - src.models.lstm_predictor - INFO -    Test Information Coefficient: 0.1324
+2025-08-07 02:09:27,800 - src.models.lstm_predictor - INFO -    Direction Assessment: 👍 GOOD - Above random performance
+2025-08-07 02:09:27,800 - src.models.lstm_predictor - INFO - 📉 ERROR ANALYSIS:
+2025-08-07 02:09:27,800 - src.models.lstm_predictor - INFO -    Validation RMSE: 0.0509
+2025-08-07 02:09:27,800 - src.models.lstm_predictor - INFO -    Test RMSE: 0.0383
+2025-08-07 02:09:27,800 - src.models.lstm_predictor - INFO -    Validation MAE: 0.0389
+2025-08-07 02:09:27,800 - src.models.lstm_predictor - INFO -    Test MAE: 0.0294
+2025-08-07 02:09:27,800 - src.models.lstm_predictor - INFO - 🔍 GENERALIZATION ANALYSIS:
+2025-08-07 02:09:27,800 - src.models.lstm_predictor - INFO -    Training R²: 0.2800
+2025-08-07 02:09:27,800 - src.models.lstm_predictor - INFO -    Overfitting Ratio: 1.25
+2025-08-07 02:09:27,800 - src.models.lstm_predictor - INFO -    Generalization Assessment: ❌ POOR - Significant overfitting
+2025-08-07 02:09:27,800 - src.models.lstm_predictor - INFO - 💼 TRADING VIABILITY:
+2025-08-07 02:09:27,800 - src.models.lstm_predictor - INFO -    Trading Readiness: 🎯 READY - Good for trading strategies
+2025-08-07 02:09:27,800 - src.models.lstm_predictor - INFO -    Trading Score: 5/6
+2025-08-07 02:09:27,800 - src.models.lstm_predictor - INFO - 🎯 RECOMMENDATIONS:
+2025-08-07 02:09:27,800 - src.models.lstm_predictor - INFO -    • Consider using more training data (5+ years)
+2025-08-07 02:09:27,800 - src.models.lstm_predictor - INFO -    • Try different feature combinations
+2025-08-07 02:09:27,800 - src.models.lstm_predictor - INFO -    • Experiment with different prediction horizons
+2025-08-07 02:09:27,800 - src.models.lstm_predictor - INFO -    • Increase regularization
+2025-08-07 02:09:27,800 - src.models.lstm_predictor - INFO -    • Reduce model complexity
+2025-08-07 02:09:27,800 - src.models.lstm_predictor - INFO -    • Use more training data
+2025-08-07 02:09:27,800 - src.models.lstm_predictor - INFO - ================================================================================
+2025-08-07 02:09:27,800 - src.models.lstm_predictor - INFO - Enhanced training completed successfully - Quality: Fair 👌
+2025-08-07 02:09:30,873 - src.models.ensemble - INFO - Training ensemble models for TSLA
+2025-08-07 02:09:30,873 - src.data.collector - INFO - Fetching fresh data for TSLA (2y)
+2025-08-07 02:09:31,023 - src.data.collector - INFO - Running data validation pipeline for TSLA
+2025-08-07 02:09:31,023 - src.data.validator - INFO - Starting validation for TSLA with 502 rows
+2025-08-07 02:09:31,030 - src.data.validator - INFO - Validation complete for TSLA: 502 clean rows
+2025-08-07 02:09:31,032 - src.data.validator - INFO - Pipeline complete for TSLA: 502 -> 502 rows
+2025-08-07 02:09:31,032 - src.data.collector - INFO - Data pipeline: 502 -> 502 rows
+2025-08-07 02:09:31,216 - src.data.collector - INFO - Successfully fetched data for TSLA
+2025-08-07 02:09:31,218 - src.models.lstm_predictor - INFO - No GPU found, using CPU
+2025-08-07 02:09:32,221 - src.models.lstm_predictor - INFO - System detected: laptop
+2025-08-07 02:09:32,222 - src.models.lstm_predictor - INFO - GPU available: False
+2025-08-07 02:09:32,222 - src.models.lstm_predictor - INFO - Thermal profile: balanced
+2025-08-07 02:09:32,223 - src.models.lstm_predictor - INFO - Initialized Enhanced LSTM for TSLA
+2025-08-07 02:09:32,223 - src.models.lstm_predictor - INFO - System: laptop (balanced thermal profile)
+2025-08-07 02:09:32,223 - src.models.lstm_predictor - INFO - GPU Available: False
+2025-08-07 02:09:32,224 - src.models.lstm_predictor - INFO - Training Config: {'batch_size': 32, 'epochs': 200, 'patience': 25, 'workers': 1, 'use_multiprocessing': False, 'max_queue_size': 5}
+2025-08-07 02:09:32,267 - src.models.lstm_predictor - INFO - Adding ENHANCED temporally accurate sentiment features...
+2025-08-07 02:09:32,267 - src.models.lstm_predictor - INFO - Using 2y sentiment with 7 temporal periods
+2025-08-07 02:09:32,267 - src.analysis.sentiment - INFO - Analyzing sentiment for TSLA over 730 days (2y)
+2025-08-07 02:09:32,267 - src.analysis.sentiment - INFO - Using historical price-based sentiment for 2y period
+2025-08-07 02:09:32,396 - src.analysis.sentiment - INFO - Fetching news sentiment from Alpha Vantage for TSLA
+2025-08-07 02:09:32,614 - src.analysis.sentiment - INFO - Alpha Vantage response keys: ['items', 'sentiment_score_definition', 'relevance_score_definition', 'feed']
+2025-08-07 02:09:32,615 - src.analysis.sentiment - INFO - Found 50 news items
+2025-08-07 02:09:32,618 - src.analysis.sentiment - INFO - Historical sentiment for TSLA: 0.430 (trend: 0.510, momentum: 0.566, confidence: 1.000, news: 50)
+2025-08-07 02:09:32,633 - src.models.lstm_predictor - INFO - Added ENHANCED temporal sentiment: periods=7, avg_sentiment=0.423, confidence=1.000, news_count=50
+2025-08-07 02:09:32,634 - src.models.lstm_predictor - INFO - Adding comprehensive 5-year earnings features for training period...
+2025-08-07 02:09:32,634 - src.models.lstm_predictor - INFO - Requesting 8 earnings periods for 2.0 years of data
+2025-08-07 02:09:32,634 - src.analysis.fundamentals - INFO - Fetching 8 earnings periods for TSLA
+2025-08-07 02:09:32,843 - src.analysis.fundamentals - INFO - Alpha Vantage: Retrieved 8 earnings events
+2025-08-07 02:09:32,844 - src.models.lstm_predictor - INFO - Found 8 earnings events for comprehensive analysis
+2025-08-07 02:09:32,847 - src.models.lstm_predictor - INFO - Added comprehensive earnings features: beat_rate=-0.750, avg_surprise=-0.069, volatility=0.150
+2025-08-07 02:09:32,863 - src.models.lstm_predictor - INFO - Generated 100 historical features from 502 data points
+2025-08-07 02:09:32,895 - src.analysis.sentiment - INFO - Analyzing sentiment for TSLA over 7 days (7d)
+2025-08-07 02:09:32,895 - src.analysis.sentiment - INFO - Fetching news sentiment from Alpha Vantage for TSLA
+2025-08-07 02:09:33,203 - src.analysis.sentiment - INFO - Alpha Vantage response keys: ['items', 'sentiment_score_definition', 'relevance_score_definition', 'feed']
+2025-08-07 02:09:33,203 - src.analysis.sentiment - INFO - Found 50 news items
+2025-08-07 02:09:37,058 - src.models.ensemble - INFO - Added 5 sentiment features
+2025-08-07 02:09:37,058 - src.models.ensemble - INFO - Selected 26 features for ensemble models
+2025-08-07 02:09:37,061 - src.models.ensemble - INFO - Training random_forest...
+2025-08-07 02:09:37,218 - src.models.ensemble - INFO - random_forest - Test R²: -0.0026
+2025-08-07 02:09:37,218 - src.models.ensemble - INFO - Training gradient_boosting...
+2025-08-07 02:09:37,532 - src.models.ensemble - INFO - gradient_boosting - Test R²: -0.1929
+2025-08-07 02:09:37,532 - src.models.ensemble - INFO - Training linear_regression...
+2025-08-07 02:09:37,540 - src.models.ensemble - INFO - linear_regression - Test R²: -0.0028
+2025-08-07 02:09:37,583 - src.models.ensemble - INFO - Ensemble models saved to data/models/TSLA/ensemble
+2025-08-07 02:09:37,598 - src.models.ensemble - INFO - Ensemble training completed - Test R²: -0.0086
+2025-08-07 02:13:59,489 - __main__ - ERROR - Cleanup failed: [Errno 1] Operation not permitted: 'data/models/TSLA'
+2025-08-07 02:29:10,492 - src.models.lstm_predictor - INFO - No GPU found, using CPU
+2025-08-07 02:29:11,500 - src.models.lstm_predictor - INFO - System detected: laptop
+2025-08-07 02:29:11,501 - src.models.lstm_predictor - INFO - GPU available: False
+2025-08-07 02:29:11,501 - src.models.lstm_predictor - INFO - Thermal profile: balanced
+2025-08-07 02:29:11,502 - src.models.lstm_predictor - INFO - Initialized Enhanced LSTM for TSLA
+2025-08-07 02:29:11,502 - src.models.lstm_predictor - INFO - System: laptop (balanced thermal profile)
+2025-08-07 02:29:11,502 - src.models.lstm_predictor - INFO - GPU Available: False
+2025-08-07 02:29:11,502 - src.models.lstm_predictor - INFO - Training Config: {'batch_size': 32, 'epochs': 200, 'patience': 25, 'workers': 1, 'use_multiprocessing': False, 'max_queue_size': 5}
+2025-08-07 02:29:11,502 - src.models.lstm_predictor - INFO - Starting enhanced training for TSLA
+2025-08-07 02:29:11,502 - src.data.collector - INFO - Fetching fresh data for TSLA (10y)
+2025-08-07 02:29:12,154 - src.data.collector - INFO - Running data validation pipeline for TSLA
+2025-08-07 02:29:12,154 - src.data.validator - INFO - Starting validation for TSLA with 2514 rows
+2025-08-07 02:29:12,166 - src.data.validator - INFO - Validation complete for TSLA: 2514 clean rows
+2025-08-07 02:29:12,167 - src.data.validator - INFO - Pipeline complete for TSLA: 2514 -> 2514 rows
+2025-08-07 02:29:12,167 - src.data.collector - INFO - Data pipeline: 2514 -> 2514 rows
+2025-08-07 02:29:12,399 - src.data.collector - INFO - Successfully fetched data for TSLA
+2025-08-07 02:29:12,453 - src.models.lstm_predictor - INFO - Adding ENHANCED temporally accurate sentiment features...
+2025-08-07 02:29:12,453 - src.models.lstm_predictor - INFO - Using 5y sentiment with 20 temporal periods
+2025-08-07 02:29:12,453 - src.analysis.sentiment - INFO - Analyzing sentiment for TSLA over 1825 days (5y)
+2025-08-07 02:29:12,453 - src.analysis.sentiment - INFO - Using historical price-based sentiment for 5y period
+2025-08-07 02:29:12,555 - src.analysis.sentiment - INFO - Fetching news sentiment from Alpha Vantage for TSLA
+2025-08-07 02:29:12,940 - src.analysis.sentiment - INFO - Alpha Vantage response keys: ['items', 'sentiment_score_definition', 'relevance_score_definition', 'feed']
+2025-08-07 02:29:12,940 - src.analysis.sentiment - INFO - Found 50 news items
+2025-08-07 02:29:12,942 - src.analysis.sentiment - INFO - Historical sentiment for TSLA: 0.568 (trend: 1.000, momentum: 0.566, confidence: 1.000, news: 50)
+2025-08-07 02:29:12,953 - src.models.lstm_predictor - INFO - Added ENHANCED temporal sentiment: periods=20, avg_sentiment=0.561, confidence=1.000, news_count=50
+2025-08-07 02:29:12,953 - src.models.lstm_predictor - INFO - Adding comprehensive 5-year earnings features for training period...
+2025-08-07 02:29:12,959 - src.models.lstm_predictor - INFO - Requesting 39 earnings periods for 10.0 years of data
+2025-08-07 02:29:12,959 - src.analysis.fundamentals - INFO - Fetching 39 earnings periods for TSLA
+2025-08-07 02:29:13,109 - src.analysis.fundamentals - INFO - Alpha Vantage: Retrieved 39 earnings events
+2025-08-07 02:29:13,110 - src.models.lstm_predictor - INFO - Found 39 earnings events for comprehensive analysis
+2025-08-07 02:29:13,125 - src.models.lstm_predictor - INFO - Added comprehensive earnings features: beat_rate=0.231, avg_surprise=0.617, volatility=3.419
+2025-08-07 02:29:13,148 - src.models.lstm_predictor - INFO - Generated 100 historical features from 2514 data points
+2025-08-07 02:29:13,148 - src.models.lstm_predictor - INFO - Using 71 features for training: ['Momentum_1d', 'Momentum_3d', 'Momentum_5d', 'Momentum_Quality', 'Momentum_Strength', 'Momentum_Consistency', 'Volatility_5d', 'Volatility_20d', 'Vol_Regime', 'Vol_Ratio', 'Vol_Persistence', 'Vol_Breakout', 'HL_Volatility', 'Mean_Reversion_5d', 'Mean_Reversion_20d', 'Reversion_Divergence', 'Distance_From_SMA20', 'Mean_Reversion_Signal', 'Price_SMA5_Ratio', 'Price_SMA20_Ratio', 'SMA_Cross', 'RSI_Normalized', 'MACD_Histogram', 'BB_Position', 'Returns_Lag1', 'Returns_Lag2', 'Returns_Lag3', 'Price_Acceleration', 'Volume_Ratio', 'Volume_Price_Trend', 'Volume_Breakout', 'Price_Volume', 'VPT_Normalized', 'Price_Efficiency', 'Overall_Sentiment', 'Sentiment_Change', 'Sentiment_Volatility', 'Sentiment_Price_Divergence', 'Sentiment_Momentum', 'Sentiment_Regime', 'Sentiment_Strength', 'Trend_Persistence', 'Trend_Acceleration', 'Multi_Trend_Align', 'Fractal_Efficiency', 'Relative_Strength', 'Sharpe_5d', 'Sharpe_20d', 'Sharpe_Ratio', 'Jump_Score', 'Outlier_Signal', 'Bull_Regime', 'Bear_Regime', 'High_Vol_Regime', 'Stress_Indicator', 'Vol_Term_Structure', 'Month_Effect', 'Quarter_Effect', 'January_Effect', 'December_Effect', 'Quarter_End', 'Spread_Proxy', 'Spread_Anomaly', 'Price_Percentile_20d', 'Price_Percentile_50d', 'Days_To_Earnings', 'Earnings_Beat_History', 'EPS_Growth_Rate', 'Earnings_Surprise_Avg', 'Earnings_Volatility', 'Recent_Earnings_Trend']
+2025-08-07 02:29:13,153 - src.models.lstm_predictor - WARNING - Removing zero-variance features: ['Sentiment_Regime', 'Days_To_Earnings', 'Earnings_Beat_History']
+2025-08-07 02:29:13,155 - src.models.lstm_predictor - INFO - IMPROVED target engineering: Log returns for 1-day movement prediction
+2025-08-07 02:29:13,155 - src.models.lstm_predictor - INFO - Target stats - Mean: 0.001197, Std: 0.036409
+2025-08-07 02:29:13,155 - src.models.lstm_predictor - INFO - Target range - Min: -0.150995, Max: 0.150995
+2025-08-07 02:29:13,155 - src.models.lstm_predictor - INFO - 95th percentile used for clipping: 0.075498
+2025-08-07 02:29:13,169 - src.models.lstm_predictor - INFO - Prepared training data: (2483, 30, 68) features, (2483,) targets
+2025-08-07 02:29:13,325 - src.models.lstm_predictor - INFO - Using StandardScaler for target variable (consistent with features)
+2025-08-07 02:29:13,325 - src.models.lstm_predictor - INFO - Pre-scaling target stats - Mean: 0.001704, Std: 0.035627
+2025-08-07 02:29:13,325 - src.models.lstm_predictor - INFO - Pre-scaling target range - Min: -0.150995, Max: 0.150995
+2025-08-07 02:29:13,326 - src.models.lstm_predictor - INFO - Post-scaling target stats - Train mean: -0.000000, Train std: 1.000000
+2025-08-07 02:29:13,326 - src.models.lstm_predictor - INFO - Post-scaling validation - Val mean: -0.084088, Val std: 0.993140
+2025-08-07 02:29:13,326 - src.models.lstm_predictor - INFO - Data splits - Train: 1738, Val: 372, Test: 373
+2025-08-07 02:29:13,326 - src.models.lstm_predictor - INFO - Target scaling - Train mean: 0.001704, Train std: 0.035627
+2025-08-07 02:29:13,326 - src.models.lstm_predictor - INFO - 🔧 COMPLEX MODEL selected for MAXIMUM LEARNING:
+2025-08-07 02:29:13,326 - src.models.lstm_predictor - INFO -    Features=68, Samples=1738, Data=2514
+2025-08-07 02:29:13,326 - src.models.lstm_predictor - INFO -    Strategy: Multi-layer LSTM + attention for 80%+ accuracy target
+2025-08-07 02:29:13,326 - src.models.lstm_predictor - INFO - Building ENHANCED COMPLEX model with 256 LSTM units for 80%+ accuracy
+2025-08-07 02:29:13,539 - src.models.lstm_predictor - INFO - ENHANCED COMPLEX model built: 1,695,753 parameters
+2025-08-07 02:29:13,539 - src.models.lstm_predictor - INFO - Architecture: 3 LSTM + 2 Attention + 4 Dense layers for maximum learning
+2025-08-07 02:29:13,539 - src.models.lstm_predictor - INFO - Model architecture: 30 time steps, 68 features
+2025-08-07 02:29:13,539 - src.models.lstm_predictor - INFO - Total parameters: 1,695,753
+2025-08-07 02:29:13,539 - src.models.lstm_predictor - INFO - Starting SYSTEM-AWARE INTENSIVE training for 80%+ accuracy target...
+2025-08-07 02:29:13,539 - src.models.lstm_predictor - INFO - Training configuration: {'batch_size': 32, 'epochs': 200, 'patience': 25, 'workers': 1, 'use_multiprocessing': False, 'max_queue_size': 5}
+2025-08-07 03:36:04,626 - src.models.lstm_predictor - WARNING - High validation loss detected: 1.1053 - model may be poor quality
+2025-08-07 03:36:10,407 - src.models.lstm_predictor - INFO - Model passed quality validation: Financial metrics passed: 5/7 checks
+✓ Val direction accuracy: 0.543
+✗ Test direction accuracy: 0.466 < 0.51
+✓ Val IC: 0.0755
+✓ Test IC: -0.0211
+✓ Val R²: 0.0018
+✓ Test R²: -0.0097
+✗ Overfitting: Val R² 0.002 vs Test R² -0.010
+2025-08-07 03:36:10,529 - src.models.lstm_predictor - INFO - Metrics saved to data/models/TSLA/TSLA_metrics.json
+2025-08-07 03:36:10,530 - src.models.lstm_predictor - INFO - ================================================================================
+2025-08-07 03:36:10,530 - src.models.lstm_predictor - INFO - COMPREHENSIVE MODEL EVALUATION
+2025-08-07 03:36:10,530 - src.models.lstm_predictor - INFO - ================================================================================
+2025-08-07 03:36:10,530 - src.models.lstm_predictor - INFO - 🎯 TRAINING PERFORMANCE:
+2025-08-07 03:36:10,530 - src.models.lstm_predictor - INFO -    Training Time: 4019.0s
+2025-08-07 03:36:10,530 - src.models.lstm_predictor - INFO -    Epochs Trained: 88
+2025-08-07 03:36:10,530 - src.models.lstm_predictor - INFO -    Model Parameters: 1,695,753
+2025-08-07 03:36:10,530 - src.models.lstm_predictor - INFO -    Features Used: 68
+2025-08-07 03:36:10,530 - src.models.lstm_predictor - INFO - 📊 R² SCORE ANALYSIS:
+2025-08-07 03:36:10,530 - src.models.lstm_predictor - INFO -    Validation R²: 0.0018
+2025-08-07 03:36:10,531 - src.models.lstm_predictor - INFO -    Test R²: -0.0097
+2025-08-07 03:36:10,531 - src.models.lstm_predictor - INFO -    Overfitting Gap: 0.0115
+2025-08-07 03:36:10,531 - src.models.lstm_predictor - INFO -    R² Assessment: ⚠️ BELOW AVERAGE - Still within normal range
+2025-08-07 03:36:10,531 - src.models.lstm_predictor - INFO - 💰 FINANCIAL PERFORMANCE:
+2025-08-07 03:36:10,531 - src.models.lstm_predictor - INFO -    Validation Direction Accuracy: 54.3%
+2025-08-07 03:36:10,531 - src.models.lstm_predictor - INFO -    Test Direction Accuracy: 46.6%
+2025-08-07 03:36:10,531 - src.models.lstm_predictor - INFO -    Validation Information Coefficient: 0.0755
+2025-08-07 03:36:10,531 - src.models.lstm_predictor - INFO -    Test Information Coefficient: -0.0211
+2025-08-07 03:36:10,531 - src.models.lstm_predictor - INFO -    Direction Assessment: ❌ POOR - Below random performance
+2025-08-07 03:36:10,531 - src.models.lstm_predictor - INFO - 📉 ERROR ANALYSIS:
+2025-08-07 03:36:10,531 - src.models.lstm_predictor - INFO -    Validation RMSE: 0.0354
+2025-08-07 03:36:10,531 - src.models.lstm_predictor - INFO -    Test RMSE: 0.0414
+2025-08-07 03:36:10,531 - src.models.lstm_predictor - INFO -    Validation MAE: 0.0261
+2025-08-07 03:36:10,531 - src.models.lstm_predictor - INFO -    Test MAE: 0.0311
+2025-08-07 03:36:10,531 - src.models.lstm_predictor - INFO - 🔍 GENERALIZATION ANALYSIS:
+2025-08-07 03:36:10,531 - src.models.lstm_predictor - INFO -    Training R²: 0.0154
+2025-08-07 03:36:10,531 - src.models.lstm_predictor - INFO -    Overfitting Ratio: 0.89
+2025-08-07 03:36:10,531 - src.models.lstm_predictor - INFO -    Generalization Assessment: ⚠️ MODERATE - Some overfitting
+2025-08-07 03:36:10,531 - src.models.lstm_predictor - INFO - 💼 TRADING VIABILITY:
+2025-08-07 03:36:10,531 - src.models.lstm_predictor - INFO -    Trading Readiness: 👍 PROMISING - Worth further testing
+2025-08-07 03:36:10,531 - src.models.lstm_predictor - INFO -    Trading Score: 3/6
+2025-08-07 03:36:10,531 - src.models.lstm_predictor - INFO - 🎯 RECOMMENDATIONS:
+2025-08-07 03:36:10,531 - src.models.lstm_predictor - INFO -    • Consider using more training data (5+ years)
+2025-08-07 03:36:10,531 - src.models.lstm_predictor - INFO -    • Try different feature combinations
+2025-08-07 03:36:10,531 - src.models.lstm_predictor - INFO -    • Experiment with different prediction horizons
+2025-08-07 03:36:10,531 - src.models.lstm_predictor - INFO -    • Focus on directional accuracy over magnitude
+2025-08-07 03:36:10,531 - src.models.lstm_predictor - INFO -    • Consider ensemble methods
+2025-08-07 03:36:10,531 - src.models.lstm_predictor - INFO -    • Review feature engineering
+2025-08-07 03:36:10,531 - src.models.lstm_predictor - INFO -    • Increase regularization
+2025-08-07 03:36:10,531 - src.models.lstm_predictor - INFO -    • Reduce model complexity
+2025-08-07 03:36:10,531 - src.models.lstm_predictor - INFO -    • Use more training data
+2025-08-07 03:36:10,531 - src.models.lstm_predictor - INFO - ================================================================================
+2025-08-07 03:36:10,532 - src.models.lstm_predictor - INFO - Enhanced training completed successfully - Quality: Fair 👌
+2025-08-07 03:36:11,095 - src.models.ensemble - INFO - Training ensemble models for TSLA
+2025-08-07 03:36:11,095 - src.data.collector - INFO - Fetching fresh data for TSLA (10y)
+2025-08-07 03:36:11,429 - src.data.collector - INFO - Running data validation pipeline for TSLA
+2025-08-07 03:36:11,429 - src.data.validator - INFO - Starting validation for TSLA with 2514 rows
+2025-08-07 03:36:11,438 - src.data.validator - INFO - Validation complete for TSLA: 2514 clean rows
+2025-08-07 03:36:11,439 - src.data.validator - INFO - Pipeline complete for TSLA: 2514 -> 2514 rows
+2025-08-07 03:36:11,439 - src.data.collector - INFO - Data pipeline: 2514 -> 2514 rows
+2025-08-07 03:36:11,664 - src.data.collector - INFO - Successfully fetched data for TSLA
+2025-08-07 03:36:11,666 - src.models.lstm_predictor - INFO - No GPU found, using CPU
+2025-08-07 03:36:12,676 - src.models.lstm_predictor - INFO - System detected: laptop
+2025-08-07 03:36:12,677 - src.models.lstm_predictor - INFO - GPU available: False
+2025-08-07 03:36:12,677 - src.models.lstm_predictor - INFO - Thermal profile: balanced
+2025-08-07 03:36:12,679 - src.models.lstm_predictor - INFO - Initialized Enhanced LSTM for TSLA
+2025-08-07 03:36:12,679 - src.models.lstm_predictor - INFO - System: laptop (balanced thermal profile)
+2025-08-07 03:36:12,679 - src.models.lstm_predictor - INFO - GPU Available: False
+2025-08-07 03:36:12,679 - src.models.lstm_predictor - INFO - Training Config: {'batch_size': 32, 'epochs': 200, 'patience': 25, 'workers': 1, 'use_multiprocessing': False, 'max_queue_size': 5}
+2025-08-07 03:36:12,735 - src.models.lstm_predictor - INFO - Adding ENHANCED temporally accurate sentiment features...
+2025-08-07 03:36:12,735 - src.models.lstm_predictor - INFO - Using 5y sentiment with 20 temporal periods
+2025-08-07 03:36:12,736 - src.analysis.sentiment - INFO - Analyzing sentiment for TSLA over 1825 days (5y)
+2025-08-07 03:36:12,736 - src.analysis.sentiment - INFO - Using historical price-based sentiment for 5y period
+2025-08-07 03:36:12,861 - src.analysis.sentiment - INFO - Fetching news sentiment from Alpha Vantage for TSLA
+2025-08-07 03:36:13,233 - src.analysis.sentiment - INFO - Alpha Vantage response keys: ['items', 'sentiment_score_definition', 'relevance_score_definition', 'feed']
+2025-08-07 03:36:13,233 - src.analysis.sentiment - INFO - Found 50 news items
+2025-08-07 03:36:13,236 - src.analysis.sentiment - INFO - Historical sentiment for TSLA: 0.568 (trend: 1.000, momentum: 0.566, confidence: 1.000, news: 50)
+2025-08-07 03:36:13,254 - src.models.lstm_predictor - INFO - Added ENHANCED temporal sentiment: periods=20, avg_sentiment=0.561, confidence=1.000, news_count=50
+2025-08-07 03:36:13,254 - src.models.lstm_predictor - INFO - Adding comprehensive 5-year earnings features for training period...
+2025-08-07 03:36:13,254 - src.models.lstm_predictor - INFO - Requesting 39 earnings periods for 10.0 years of data
+2025-08-07 03:36:13,254 - src.analysis.fundamentals - INFO - Fetching 39 earnings periods for TSLA
+2025-08-07 03:36:13,590 - src.analysis.fundamentals - INFO - Finnhub: Retrieved 3 earnings events
+2025-08-07 03:36:13,593 - src.models.lstm_predictor - INFO - Found 3 earnings events for comprehensive analysis
+2025-08-07 03:36:13,618 - src.models.lstm_predictor - INFO - Added comprehensive earnings features: beat_rate=-1.000, avg_surprise=-0.085, volatility=0.000
+2025-08-07 03:36:13,643 - src.models.lstm_predictor - INFO - Generated 100 historical features from 2514 data points
+2025-08-07 03:36:13,801 - src.analysis.sentiment - INFO - Analyzing sentiment for TSLA over 7 days (7d)
+2025-08-07 03:36:13,801 - src.analysis.sentiment - INFO - Fetching news sentiment from Alpha Vantage for TSLA
+2025-08-07 03:36:13,911 - src.analysis.sentiment - INFO - Alpha Vantage response keys: ['Information']
+2025-08-07 03:36:13,911 - src.analysis.sentiment - WARNING - No 'feed' key in Alpha Vantage response for TSLA
+2025-08-07 03:36:13,911 - src.analysis.sentiment - WARNING - Unexpected response structure: {'Information': 'We have detected your API key as TROVSB0QXA6N4OFS and our standard API rate limit is 25 requests per day. Please subscribe to any of the premium plans at https://www.alphavantage.co/premium/ to instantly remove all daily rate limits.'}
+2025-08-07 03:36:13,911 - src.analysis.sentiment - INFO - Trying alternative news sources for TSLA
+2025-08-07 03:36:14,139 - src.analysis.sentiment - INFO - yfinance returned 10 news items for TSLA
+2025-08-07 03:36:18,332 - src.models.ensemble - INFO - Added 5 sentiment features
+2025-08-07 03:36:18,333 - src.models.ensemble - INFO - Selected 26 features for ensemble models
+2025-08-07 03:36:18,339 - src.models.ensemble - INFO - Training random_forest...
+2025-08-07 03:36:18,828 - src.models.ensemble - INFO - random_forest - Test R²: -0.0497
+2025-08-07 03:36:18,828 - src.models.ensemble - INFO - Training gradient_boosting...
+2025-08-07 03:36:20,549 - src.models.ensemble - INFO - gradient_boosting - Test R²: -0.1208
+2025-08-07 03:36:20,549 - src.models.ensemble - INFO - Training linear_regression...
+2025-08-07 03:36:20,559 - src.models.ensemble - INFO - linear_regression - Test R²: 0.0056
+2025-08-07 03:36:20,660 - src.models.ensemble - INFO - Ensemble models saved to data/models/TSLA/ensemble
+2025-08-07 03:36:20,699 - src.models.ensemble - INFO - Ensemble training completed - Test R²: -0.0184
+2025-08-07 09:02:37,914 - src.models.lstm_predictor - INFO - No GPU found, using CPU
+2025-08-07 09:02:38,919 - src.models.lstm_predictor - INFO - System detected: laptop
+2025-08-07 09:02:38,919 - src.models.lstm_predictor - INFO - GPU available: False
+2025-08-07 09:02:38,921 - src.models.lstm_predictor - INFO - Thermal profile: balanced
+2025-08-07 09:02:38,922 - src.models.lstm_predictor - INFO - Initialized Enhanced LSTM for TSLA
+2025-08-07 09:02:38,922 - src.models.lstm_predictor - INFO - System: laptop (balanced thermal profile)
+2025-08-07 09:02:38,922 - src.models.lstm_predictor - INFO - GPU Available: False
+2025-08-07 09:02:38,922 - src.models.lstm_predictor - INFO - Training Config: {'batch_size': 32, 'epochs': 200, 'patience': 25, 'workers': 1, 'use_multiprocessing': False, 'max_queue_size': 5}
+2025-08-07 09:02:38,923 - src.models.lstm_predictor - INFO - Starting enhanced training for TSLA
+2025-08-07 09:02:38,923 - src.data.collector - INFO - 🚀 MEGA DATA MODE: Fetching comprehensive data from ALL APIs for TSLA
+2025-08-07 09:02:38,923 - src.data.collector - INFO - 🚀 MEGA DATA: Starting comprehensive data collection for TSLA
+2025-08-07 09:02:39,534 - src.data.collector - INFO - 📊 Yahoo Finance: Retrieved 3800 days of base data
+2025-08-07 09:02:39,731 - src.data.collector - INFO - Alpha Vantage API not yet implemented
+2025-08-07 09:02:39,731 - src.data.collector - INFO - FMP API not yet implemented
+2025-08-07 09:02:39,731 - src.data.collector - INFO - Finnhub API not yet implemented
+2025-08-07 09:02:39,731 - src.data.collector - INFO - 🧠 Applying mega feature engineering...
+2025-08-07 09:02:39,863 - src.data.collector - INFO - ✨ Enhanced with 31 total features
+2025-08-07 09:02:39,863 - src.data.collector - INFO - 🔍 Running enhanced validation pipeline for mega data
+2025-08-07 09:02:39,863 - src.data.validator - INFO - Starting validation for TSLA with 3800 rows
+2025-08-07 09:02:39,883 - src.data.validator - INFO - Validation complete for TSLA: 3601 clean rows
+2025-08-07 09:02:39,884 - src.data.validator - INFO - Pipeline complete for TSLA: 3800 -> 3601 rows
+2025-08-07 09:02:39,884 - src.data.collector - WARNING - Mega data warnings: Handled 446 missing values, 0 remaining
+2025-08-07 09:02:39,884 - src.data.collector - INFO - 📈 Mega data pipeline: 3800 -> 3601 rows
+2025-08-07 09:02:39,884 - src.data.collector - INFO - ✅ MEGA DATA: Successfully collected comprehensive dataset with 3601 rows and 31 features
+2025-08-07 09:02:39,922 - src.models.lstm_predictor - INFO - Adding ENHANCED temporally accurate sentiment features...
+2025-08-07 09:02:39,922 - src.models.lstm_predictor - INFO - Using 5y sentiment with 20 temporal periods
+2025-08-07 09:02:39,922 - src.analysis.sentiment - INFO - Analyzing sentiment for TSLA over 1825 days (5y)
+2025-08-07 09:02:39,922 - src.analysis.sentiment - INFO - Using historical price-based sentiment for 5y period
+2025-08-07 09:02:40,016 - src.analysis.sentiment - INFO - Fetching news sentiment from Alpha Vantage for TSLA
+2025-08-07 09:02:40,213 - src.analysis.sentiment - INFO - Alpha Vantage response keys: ['Information']
+2025-08-07 09:02:40,213 - src.analysis.sentiment - WARNING - No 'feed' key in Alpha Vantage response for TSLA
+2025-08-07 09:02:40,213 - src.analysis.sentiment - WARNING - Unexpected response structure: {'Information': 'We have detected your API key as TROVSB0QXA6N4OFS and our standard API rate limit is 25 requests per day. Please subscribe to any of the premium plans at https://www.alphavantage.co/premium/ to instantly remove all daily rate limits.'}
+2025-08-07 09:02:40,213 - src.analysis.sentiment - INFO - Trying alternative news sources for TSLA
+2025-08-07 09:02:40,531 - src.analysis.sentiment - INFO - yfinance returned 10 news items for TSLA
+2025-08-07 09:02:40,640 - src.analysis.sentiment - INFO - Historical sentiment for TSLA: 0.518 (trend: 1.000, momentum: 0.566, confidence: 1.000, news: 10)
+2025-08-07 09:02:40,647 - src.models.lstm_predictor - INFO - Added ENHANCED temporal sentiment: periods=20, avg_sentiment=0.512, confidence=1.000, news_count=10
+2025-08-07 09:02:40,647 - src.models.lstm_predictor - INFO - Adding comprehensive 5-year earnings features for training period...
+2025-08-07 09:02:40,653 - src.models.lstm_predictor - INFO - Requesting 57 earnings periods for 14.3 years of data
+2025-08-07 09:02:40,653 - src.analysis.fundamentals - INFO - Fetching 57 earnings periods for TSLA
+2025-08-07 09:02:40,991 - src.analysis.fundamentals - INFO - Finnhub: Retrieved 3 earnings events
+2025-08-07 09:02:40,992 - src.models.lstm_predictor - INFO - Found 3 earnings events for comprehensive analysis
+2025-08-07 09:02:41,009 - src.models.lstm_predictor - INFO - Added comprehensive earnings features: beat_rate=-1.000, avg_surprise=-0.085, volatility=0.000
+2025-08-07 09:02:41,032 - src.models.lstm_predictor - INFO - Generated 124 historical features from 3601 data points
+2025-08-07 09:02:41,032 - src.models.lstm_predictor - INFO - Using 71 features for training: ['Momentum_1d', 'Momentum_3d', 'Momentum_5d', 'Momentum_Quality', 'Momentum_Strength', 'Momentum_Consistency', 'Volatility_5d', 'Volatility_20d', 'Vol_Regime', 'Vol_Ratio', 'Vol_Persistence', 'Vol_Breakout', 'HL_Volatility', 'Mean_Reversion_5d', 'Mean_Reversion_20d', 'Reversion_Divergence', 'Distance_From_SMA20', 'Mean_Reversion_Signal', 'Price_SMA5_Ratio', 'Price_SMA20_Ratio', 'SMA_Cross', 'RSI_Normalized', 'MACD_Histogram', 'BB_Position', 'Returns_Lag1', 'Returns_Lag2', 'Returns_Lag3', 'Price_Acceleration', 'Volume_Ratio', 'Volume_Price_Trend', 'Volume_Breakout', 'Price_Volume', 'VPT_Normalized', 'Price_Efficiency', 'Overall_Sentiment', 'Sentiment_Change', 'Sentiment_Volatility', 'Sentiment_Price_Divergence', 'Sentiment_Momentum', 'Sentiment_Regime', 'Sentiment_Strength', 'Trend_Persistence', 'Trend_Acceleration', 'Multi_Trend_Align', 'Fractal_Efficiency', 'Relative_Strength', 'Sharpe_5d', 'Sharpe_20d', 'Sharpe_Ratio', 'Jump_Score', 'Outlier_Signal', 'Bull_Regime', 'Bear_Regime', 'High_Vol_Regime', 'Stress_Indicator', 'Vol_Term_Structure', 'Month_Effect', 'Quarter_Effect', 'January_Effect', 'December_Effect', 'Quarter_End', 'Spread_Proxy', 'Spread_Anomaly', 'Price_Percentile_20d', 'Price_Percentile_50d', 'Days_To_Earnings', 'Earnings_Beat_History', 'EPS_Growth_Rate', 'Earnings_Surprise_Avg', 'Earnings_Volatility', 'Recent_Earnings_Trend']
+2025-08-07 09:02:41,038 - src.models.lstm_predictor - WARNING - Removing zero-variance features: ['Sentiment_Regime', 'Days_To_Earnings', 'Earnings_Beat_History', 'Earnings_Volatility', 'Recent_Earnings_Trend']
+2025-08-07 09:02:41,040 - src.models.lstm_predictor - INFO - IMPROVED target engineering: Log returns for 1-day movement prediction
+2025-08-07 09:02:41,041 - src.models.lstm_predictor - INFO - Target stats - Mean: 0.001468, Std: 0.035185
+2025-08-07 09:02:41,041 - src.models.lstm_predictor - INFO - Target range - Min: -0.146435, Max: 0.146435
+2025-08-07 09:02:41,041 - src.models.lstm_predictor - INFO - 95th percentile used for clipping: 0.073217
+2025-08-07 09:02:41,059 - src.models.lstm_predictor - INFO - Prepared training data: (3570, 30, 66) features, (3570,) targets
+2025-08-07 09:02:41,267 - src.models.lstm_predictor - INFO - Using StandardScaler for target variable (consistent with features)
+2025-08-07 09:02:41,267 - src.models.lstm_predictor - INFO - Pre-scaling target stats - Mean: 0.001961, Std: 0.034009
+2025-08-07 09:02:41,267 - src.models.lstm_predictor - INFO - Pre-scaling target range - Min: -0.146435, Max: 0.146435
+2025-08-07 09:02:41,268 - src.models.lstm_predictor - INFO - Post-scaling target stats - Train mean: 0.000000, Train std: 1.000000
+2025-08-07 09:02:41,268 - src.models.lstm_predictor - INFO - Post-scaling validation - Val mean: -0.053324, Val std: 1.107665
+2025-08-07 09:02:41,268 - src.models.lstm_predictor - INFO - Data splits - Train: 2499, Val: 535, Test: 536
+2025-08-07 09:02:41,268 - src.models.lstm_predictor - INFO - Target scaling - Train mean: 0.001961, Train std: 0.034009
+2025-08-07 09:02:41,268 - src.models.lstm_predictor - INFO - 🔧 COMPLEX MODEL selected for MAXIMUM LEARNING:
+2025-08-07 09:02:41,268 - src.models.lstm_predictor - INFO -    Features=66, Samples=2499, Data=3601
+2025-08-07 09:02:41,268 - src.models.lstm_predictor - INFO -    Strategy: Multi-layer LSTM + attention for 80%+ accuracy target
+2025-08-07 09:02:41,268 - src.models.lstm_predictor - INFO - Building ENHANCED COMPLEX model with 256 LSTM units for 80%+ accuracy
+2025-08-07 09:02:41,441 - src.models.lstm_predictor - INFO - ENHANCED COMPLEX model built: 1,693,701 parameters
+2025-08-07 09:02:41,441 - src.models.lstm_predictor - INFO - Architecture: 3 LSTM + 2 Attention + 4 Dense layers for maximum learning
+2025-08-07 09:02:41,441 - src.models.lstm_predictor - INFO - Model architecture: 30 time steps, 66 features
+2025-08-07 09:02:41,441 - src.models.lstm_predictor - INFO - Total parameters: 1,693,701
+2025-08-07 09:02:41,441 - src.models.lstm_predictor - INFO - Starting SYSTEM-AWARE INTENSIVE training for 80%+ accuracy target...
+2025-08-07 09:02:41,441 - src.models.lstm_predictor - INFO - Training configuration: {'batch_size': 32, 'epochs': 200, 'patience': 25, 'workers': 1, 'use_multiprocessing': False, 'max_queue_size': 5}
+2025-08-07 17:51:01,422 - src.models.lstm_predictor - INFO - No GPU found, using CPU
+2025-08-07 17:51:02,427 - src.models.lstm_predictor - INFO - System detected: laptop
+2025-08-07 17:51:02,427 - src.models.lstm_predictor - INFO - GPU available: False
+2025-08-07 17:51:02,427 - src.models.lstm_predictor - INFO - Thermal profile: balanced
+2025-08-07 17:51:02,428 - src.models.lstm_predictor - INFO - Initialized Enhanced LSTM for TSLA
+2025-08-07 17:51:02,428 - src.models.lstm_predictor - INFO - System: laptop (balanced thermal profile)
+2025-08-07 17:51:02,428 - src.models.lstm_predictor - INFO - GPU Available: False
+2025-08-07 17:51:02,428 - src.models.lstm_predictor - INFO - Training Config: {'batch_size': 32, 'epochs': 200, 'patience': 25, 'workers': 1, 'use_multiprocessing': False, 'max_queue_size': 5}
+2025-08-07 17:51:02,428 - src.models.lstm_predictor - INFO - Starting enhanced training for TSLA
+2025-08-07 17:51:02,429 - src.data.collector - INFO - 🚀 MEGA DATA MODE: Fetching comprehensive data from ALL APIs for TSLA
+2025-08-07 17:51:02,429 - src.data.collector - INFO - 🚀 MEGA DATA: Starting comprehensive data collection for TSLA
+2025-08-07 17:51:03,096 - src.data.collector - INFO - 📊 Yahoo Finance: Retrieved 3801 days of base data
+2025-08-07 17:51:03,341 - src.data.collector - INFO - Alpha Vantage API not yet implemented
+2025-08-07 17:51:03,341 - src.data.collector - INFO - FMP API not yet implemented
+2025-08-07 17:51:03,341 - src.data.collector - INFO - Finnhub API not yet implemented
+2025-08-07 17:51:03,341 - src.data.collector - INFO - 🧠 Applying mega feature engineering...
+2025-08-07 17:51:03,444 - src.data.collector - INFO - ✨ Enhanced with 31 total features
+2025-08-07 17:51:03,444 - src.data.collector - INFO - 🔍 Running enhanced validation pipeline for mega data
+2025-08-07 17:51:03,444 - src.data.validator - INFO - Starting validation for TSLA with 3801 rows
+2025-08-07 17:51:03,457 - src.data.validator - INFO - Validation complete for TSLA: 3602 clean rows
+2025-08-07 17:51:03,458 - src.data.validator - INFO - Pipeline complete for TSLA: 3801 -> 3602 rows
+2025-08-07 17:51:03,458 - src.data.collector - WARNING - Mega data warnings: Handled 446 missing values, 0 remaining
+2025-08-07 17:51:03,459 - src.data.collector - INFO - 📈 Mega data pipeline: 3801 -> 3602 rows
+2025-08-07 17:51:03,459 - src.data.collector - INFO - ✅ MEGA DATA: Successfully collected comprehensive dataset with 3602 rows and 31 features
+2025-08-07 17:51:03,492 - src.models.lstm_predictor - INFO - Adding ENHANCED temporally accurate sentiment features...
+2025-08-07 17:51:03,492 - src.models.lstm_predictor - INFO - Using 5y sentiment with 20 temporal periods
+2025-08-07 17:51:03,492 - src.analysis.sentiment - INFO - Analyzing sentiment for TSLA over 1825 days (5y)
+2025-08-07 17:51:03,492 - src.analysis.sentiment - INFO - Using historical price-based sentiment for 5y period
+2025-08-07 17:51:03,594 - src.analysis.sentiment - INFO - Fetching news sentiment from Alpha Vantage for TSLA
+2025-08-07 17:51:03,811 - src.analysis.sentiment - INFO - Alpha Vantage response keys: ['Information']
+2025-08-07 17:51:03,811 - src.analysis.sentiment - WARNING - No 'feed' key in Alpha Vantage response for TSLA
+2025-08-07 17:51:03,811 - src.analysis.sentiment - WARNING - Unexpected response structure: {'Information': 'We have detected your API key as TROVSB0QXA6N4OFS and our standard API rate limit is 25 requests per day. Please subscribe to any of the premium plans at https://www.alphavantage.co/premium/ to instantly remove all daily rate limits.'}
+2025-08-07 17:51:03,811 - src.analysis.sentiment - INFO - Trying alternative news sources for TSLA
+2025-08-07 17:51:04,077 - src.analysis.sentiment - INFO - yfinance returned 10 news items for TSLA
+2025-08-07 17:51:04,177 - src.analysis.sentiment - INFO - Historical sentiment for TSLA: 0.542 (trend: 1.000, momentum: 0.623, confidence: 1.000, news: 10)
+2025-08-07 17:51:04,185 - src.models.lstm_predictor - INFO - Added ENHANCED temporal sentiment: periods=20, avg_sentiment=0.536, confidence=1.000, news_count=10
+2025-08-07 17:51:04,185 - src.models.lstm_predictor - INFO - Adding comprehensive 5-year earnings features for training period...
+2025-08-07 17:51:04,192 - src.models.lstm_predictor - INFO - Requesting 57 earnings periods for 14.3 years of data
+2025-08-07 17:51:04,193 - src.analysis.fundamentals - INFO - Fetching 57 earnings periods for TSLA
+2025-08-07 17:51:04,526 - src.analysis.fundamentals - INFO - Finnhub: Retrieved 3 earnings events
+2025-08-07 17:51:04,527 - src.models.lstm_predictor - INFO - Found 3 earnings events for comprehensive analysis
+2025-08-07 17:51:04,543 - src.models.lstm_predictor - INFO - Added comprehensive earnings features: beat_rate=-1.000, avg_surprise=-0.085, volatility=0.000
+2025-08-07 17:51:04,565 - src.models.lstm_predictor - INFO - Generated 124 historical features from 3602 data points
+2025-08-07 17:51:04,566 - src.models.lstm_predictor - INFO - Using 71 features for training: ['Momentum_1d', 'Momentum_3d', 'Momentum_5d', 'Momentum_Quality', 'Momentum_Strength', 'Momentum_Consistency', 'Volatility_5d', 'Volatility_20d', 'Vol_Regime', 'Vol_Ratio', 'Vol_Persistence', 'Vol_Breakout', 'HL_Volatility', 'Mean_Reversion_5d', 'Mean_Reversion_20d', 'Reversion_Divergence', 'Distance_From_SMA20', 'Mean_Reversion_Signal', 'Price_SMA5_Ratio', 'Price_SMA20_Ratio', 'SMA_Cross', 'RSI_Normalized', 'MACD_Histogram', 'BB_Position', 'Returns_Lag1', 'Returns_Lag2', 'Returns_Lag3', 'Price_Acceleration', 'Volume_Ratio', 'Volume_Price_Trend', 'Volume_Breakout', 'Price_Volume', 'VPT_Normalized', 'Price_Efficiency', 'Overall_Sentiment', 'Sentiment_Change', 'Sentiment_Volatility', 'Sentiment_Price_Divergence', 'Sentiment_Momentum', 'Sentiment_Regime', 'Sentiment_Strength', 'Trend_Persistence', 'Trend_Acceleration', 'Multi_Trend_Align', 'Fractal_Efficiency', 'Relative_Strength', 'Sharpe_5d', 'Sharpe_20d', 'Sharpe_Ratio', 'Jump_Score', 'Outlier_Signal', 'Bull_Regime', 'Bear_Regime', 'High_Vol_Regime', 'Stress_Indicator', 'Vol_Term_Structure', 'Month_Effect', 'Quarter_Effect', 'January_Effect', 'December_Effect', 'Quarter_End', 'Spread_Proxy', 'Spread_Anomaly', 'Price_Percentile_20d', 'Price_Percentile_50d', 'Days_To_Earnings', 'Earnings_Beat_History', 'EPS_Growth_Rate', 'Earnings_Surprise_Avg', 'Earnings_Volatility', 'Recent_Earnings_Trend']
+2025-08-07 17:51:04,574 - src.models.lstm_predictor - WARNING - Removing zero-variance features: ['Sentiment_Regime', 'Days_To_Earnings', 'Earnings_Beat_History', 'Earnings_Volatility', 'Recent_Earnings_Trend']
+2025-08-07 17:51:04,577 - src.models.lstm_predictor - INFO - IMPROVED target engineering: Log returns for 1-day movement prediction
+2025-08-07 17:51:04,577 - src.models.lstm_predictor - INFO - Target stats - Mean: 0.001469, Std: 0.035179
+2025-08-07 17:51:04,577 - src.models.lstm_predictor - INFO - Target range - Min: -0.146387, Max: 0.146387
+2025-08-07 17:51:04,577 - src.models.lstm_predictor - INFO - 95th percentile used for clipping: 0.073194
+2025-08-07 17:51:04,597 - src.models.lstm_predictor - INFO - Prepared training data: (3571, 30, 66) features, (3571,) targets
+2025-08-07 17:51:04,798 - src.models.lstm_predictor - INFO - Using StandardScaler for target variable (consistent with features)
+2025-08-07 17:51:04,798 - src.models.lstm_predictor - INFO - Pre-scaling target stats - Mean: 0.001961, Std: 0.034007
+2025-08-07 17:51:04,798 - src.models.lstm_predictor - INFO - Pre-scaling target range - Min: -0.146387, Max: 0.146387
+2025-08-07 17:51:04,798 - src.models.lstm_predictor - INFO - Post-scaling target stats - Train mean: 0.000000, Train std: 1.000000
+2025-08-07 17:51:04,798 - src.models.lstm_predictor - INFO - Post-scaling validation - Val mean: -0.053325, Val std: 1.107716
+2025-08-07 17:51:04,798 - src.models.lstm_predictor - INFO - Data splits - Train: 2499, Val: 535, Test: 537
+2025-08-07 17:51:04,798 - src.models.lstm_predictor - INFO - Target scaling - Train mean: 0.001961, Train std: 0.034007
+2025-08-07 17:51:04,798 - src.models.lstm_predictor - INFO - 🔧 COMPLEX MODEL selected for MAXIMUM LEARNING:
+2025-08-07 17:51:04,799 - src.models.lstm_predictor - INFO -    Features=66, Samples=2499, Data=3602
+2025-08-07 17:51:04,799 - src.models.lstm_predictor - INFO -    Strategy: Multi-layer LSTM + attention for 80%+ accuracy target
+2025-08-07 17:51:04,799 - src.models.lstm_predictor - INFO - Building PLATEAU-BREAKING COMPLEX model with 192 LSTM units
+2025-08-07 17:51:04,799 - src.models.lstm_predictor - INFO - 🚀 Optimized architecture to break through 0.9 loss barrier
+2025-08-07 17:51:04,980 - src.models.lstm_predictor - INFO - PLATEAU-BREAKING COMPLEX model built: 942,949 parameters
+2025-08-07 17:51:04,980 - src.models.lstm_predictor - INFO - 🔥 Architecture optimized to break through 0.9 loss barrier
+2025-08-07 17:51:04,980 - src.models.lstm_predictor - INFO - 🚀 Features: Residual connections, Swish activation, AMSGrad optimizer, Huber loss
+2025-08-07 17:51:04,980 - src.models.lstm_predictor - INFO - Model architecture: 30 time steps, 66 features
+2025-08-07 17:51:04,980 - src.models.lstm_predictor - INFO - Total parameters: 942,949
+2025-08-07 17:51:04,980 - src.models.lstm_predictor - INFO - 🚀 Starting PLATEAU-BREAKING training optimized to break through 0.9 loss barrier...
+2025-08-07 17:51:04,980 - src.models.lstm_predictor - INFO - 🔥 Enhanced with: Cyclical LR, Adaptive Loss, Residual Connections, AMSGrad
+2025-08-07 17:51:04,980 - src.models.lstm_predictor - INFO - Training configuration: {'batch_size': 32, 'epochs': 200, 'patience': 25, 'workers': 1, 'use_multiprocessing': False, 'max_queue_size': 5}
+2025-08-07 18:02:26,607 - src.models.lstm_predictor - WARNING - High validation loss detected: 0.6386 - model may be poor quality
+2025-08-07 18:02:32,038 - src.models.lstm_predictor - INFO - Model passed quality validation: Financial metrics passed: 7/7 checks
+✓ Val direction accuracy: 0.521
+✓ Test direction accuracy: 0.533
+✓ Val IC: 0.0666
+✓ Test IC: 0.0754
+✓ Val R²: -0.0231
+✓ Test R²: -0.0178
+✓ No severe overfitting
+2025-08-07 18:02:32,123 - src.models.lstm_predictor - INFO - Metrics saved to data/models/TSLA/TSLA_metrics.json
+2025-08-07 18:02:32,123 - src.models.lstm_predictor - INFO - ================================================================================
+2025-08-07 18:02:32,123 - src.models.lstm_predictor - INFO - COMPREHENSIVE MODEL EVALUATION
+2025-08-07 18:02:32,123 - src.models.lstm_predictor - INFO - ================================================================================
+2025-08-07 18:02:32,123 - src.models.lstm_predictor - INFO - 🎯 TRAINING PERFORMANCE:
+2025-08-07 18:02:32,123 - src.models.lstm_predictor - INFO -    Training Time: 689.7s
+2025-08-07 18:02:32,123 - src.models.lstm_predictor - INFO -    Epochs Trained: 52
+2025-08-07 18:02:32,123 - src.models.lstm_predictor - INFO -    Model Parameters: 942,949
+2025-08-07 18:02:32,123 - src.models.lstm_predictor - INFO -    Features Used: 66
+2025-08-07 18:02:32,123 - src.models.lstm_predictor - INFO - 📊 R² SCORE ANALYSIS:
+2025-08-07 18:02:32,123 - src.models.lstm_predictor - INFO -    Validation R²: -0.0231
+2025-08-07 18:02:32,123 - src.models.lstm_predictor - INFO -    Test R²: -0.0178
+2025-08-07 18:02:32,123 - src.models.lstm_predictor - INFO -    Overfitting Gap: 0.0053
+2025-08-07 18:02:32,123 - src.models.lstm_predictor - INFO -    R² Assessment: ⚠️ BELOW AVERAGE - Still within normal range
+2025-08-07 18:02:32,123 - src.models.lstm_predictor - INFO - 💰 FINANCIAL PERFORMANCE:
+2025-08-07 18:02:32,123 - src.models.lstm_predictor - INFO -    Validation Direction Accuracy: 52.1%
+2025-08-07 18:02:32,123 - src.models.lstm_predictor - INFO -    Test Direction Accuracy: 53.3%
+2025-08-07 18:02:32,123 - src.models.lstm_predictor - INFO -    Validation Information Coefficient: 0.0666
+2025-08-07 18:02:32,123 - src.models.lstm_predictor - INFO -    Test Information Coefficient: 0.0754
+2025-08-07 18:02:32,123 - src.models.lstm_predictor - INFO -    Direction Assessment: 👍 GOOD - Above random performance
+2025-08-07 18:02:32,123 - src.models.lstm_predictor - INFO - 📉 ERROR ANALYSIS:
+2025-08-07 18:02:32,123 - src.models.lstm_predictor - INFO -    Validation RMSE: 0.0381
+2025-08-07 18:02:32,123 - src.models.lstm_predictor - INFO -    Test RMSE: 0.0385
+2025-08-07 18:02:32,123 - src.models.lstm_predictor - INFO -    Validation MAE: 0.0281
+2025-08-07 18:02:32,123 - src.models.lstm_predictor - INFO -    Test MAE: 0.0284
+2025-08-07 18:02:32,123 - src.models.lstm_predictor - INFO - 🔍 GENERALIZATION ANALYSIS:
+2025-08-07 18:02:32,123 - src.models.lstm_predictor - INFO -    Training R²: 0.0552
+2025-08-07 18:02:32,124 - src.models.lstm_predictor - INFO -    Overfitting Ratio: 1.42
+2025-08-07 18:02:32,124 - src.models.lstm_predictor - INFO -    Generalization Assessment: ❌ POOR - Significant overfitting
+2025-08-07 18:02:32,124 - src.models.lstm_predictor - INFO - 💼 TRADING VIABILITY:
+2025-08-07 18:02:32,124 - src.models.lstm_predictor - INFO -    Trading Readiness: 🎯 READY - Good for trading strategies
+2025-08-07 18:02:32,124 - src.models.lstm_predictor - INFO -    Trading Score: 5/6
+2025-08-07 18:02:32,124 - src.models.lstm_predictor - INFO - 🎯 RECOMMENDATIONS:
+2025-08-07 18:02:32,124 - src.models.lstm_predictor - INFO -    • Consider using more training data (5+ years)
+2025-08-07 18:02:32,124 - src.models.lstm_predictor - INFO -    • Try different feature combinations
+2025-08-07 18:02:32,124 - src.models.lstm_predictor - INFO -    • Experiment with different prediction horizons
+2025-08-07 18:02:32,124 - src.models.lstm_predictor - INFO -    • Increase regularization
+2025-08-07 18:02:32,124 - src.models.lstm_predictor - INFO -    • Reduce model complexity
+2025-08-07 18:02:32,124 - src.models.lstm_predictor - INFO -    • Use more training data
+2025-08-07 18:02:32,124 - src.models.lstm_predictor - INFO - ================================================================================
+2025-08-07 18:02:32,124 - src.models.lstm_predictor - INFO - Enhanced training completed successfully - Quality: Fair 👌
+2025-08-07 18:02:32,514 - src.models.ensemble - INFO - Training ensemble models for TSLA
+2025-08-07 18:02:32,514 - src.data.collector - INFO - 🚀 MEGA DATA MODE: Fetching comprehensive data from ALL APIs for TSLA
+2025-08-07 18:02:32,514 - src.data.collector - INFO - 🚀 MEGA DATA: Starting comprehensive data collection for TSLA
+2025-08-07 18:02:32,861 - src.data.collector - INFO - 📊 Yahoo Finance: Retrieved 3801 days of base data
+2025-08-07 18:02:33,094 - src.data.collector - INFO - Alpha Vantage API not yet implemented
+2025-08-07 18:02:33,094 - src.data.collector - INFO - FMP API not yet implemented
+2025-08-07 18:02:33,094 - src.data.collector - INFO - Finnhub API not yet implemented
+2025-08-07 18:02:33,094 - src.data.collector - INFO - 🧠 Applying mega feature engineering...
+2025-08-07 18:02:33,218 - src.data.collector - INFO - ✨ Enhanced with 31 total features
+2025-08-07 18:02:33,218 - src.data.collector - INFO - 🔍 Running enhanced validation pipeline for mega data
+2025-08-07 18:02:33,219 - src.data.validator - INFO - Starting validation for TSLA with 3801 rows
+2025-08-07 18:02:33,229 - src.data.validator - INFO - Validation complete for TSLA: 3602 clean rows
+2025-08-07 18:02:33,230 - src.data.validator - INFO - Pipeline complete for TSLA: 3801 -> 3602 rows
+2025-08-07 18:02:33,230 - src.data.collector - WARNING - Mega data warnings: Handled 446 missing values, 0 remaining
+2025-08-07 18:02:33,230 - src.data.collector - INFO - 📈 Mega data pipeline: 3801 -> 3602 rows
+2025-08-07 18:02:33,230 - src.data.collector - INFO - ✅ MEGA DATA: Successfully collected comprehensive dataset with 3602 rows and 31 features
+2025-08-07 18:02:33,230 - src.models.lstm_predictor - INFO - No GPU found, using CPU
+2025-08-07 18:02:34,236 - src.models.lstm_predictor - INFO - System detected: laptop
+2025-08-07 18:02:34,237 - src.models.lstm_predictor - INFO - GPU available: False
+2025-08-07 18:02:34,237 - src.models.lstm_predictor - INFO - Thermal profile: balanced
+2025-08-07 18:02:34,237 - src.models.lstm_predictor - INFO - Initialized Enhanced LSTM for TSLA
+2025-08-07 18:02:34,238 - src.models.lstm_predictor - INFO - System: laptop (balanced thermal profile)
+2025-08-07 18:02:34,238 - src.models.lstm_predictor - INFO - GPU Available: False
+2025-08-07 18:02:34,238 - src.models.lstm_predictor - INFO - Training Config: {'batch_size': 32, 'epochs': 200, 'patience': 25, 'workers': 1, 'use_multiprocessing': False, 'max_queue_size': 5}
+2025-08-07 18:02:34,299 - src.models.lstm_predictor - INFO - Adding ENHANCED temporally accurate sentiment features...
+2025-08-07 18:02:34,299 - src.models.lstm_predictor - INFO - Using 5y sentiment with 20 temporal periods
+2025-08-07 18:02:34,299 - src.analysis.sentiment - INFO - Analyzing sentiment for TSLA over 1825 days (5y)
+2025-08-07 18:02:34,299 - src.analysis.sentiment - INFO - Using historical price-based sentiment for 5y period
+2025-08-07 18:02:34,439 - src.analysis.sentiment - INFO - Fetching news sentiment from Alpha Vantage for TSLA
+2025-08-07 18:02:34,681 - src.analysis.sentiment - INFO - Alpha Vantage response keys: ['Information']
+2025-08-07 18:02:34,681 - src.analysis.sentiment - WARNING - No 'feed' key in Alpha Vantage response for TSLA
+2025-08-07 18:02:34,681 - src.analysis.sentiment - WARNING - Unexpected response structure: {'Information': 'We have detected your API key as TROVSB0QXA6N4OFS and our standard API rate limit is 25 requests per day. Please subscribe to any of the premium plans at https://www.alphavantage.co/premium/ to instantly remove all daily rate limits.'}
+2025-08-07 18:02:34,681 - src.analysis.sentiment - INFO - Trying alternative news sources for TSLA
+2025-08-07 18:02:34,933 - src.analysis.sentiment - INFO - yfinance returned 10 news items for TSLA
+2025-08-07 18:02:35,052 - src.analysis.sentiment - INFO - Historical sentiment for TSLA: 0.542 (trend: 1.000, momentum: 0.623, confidence: 1.000, news: 10)
+2025-08-07 18:02:35,061 - src.models.lstm_predictor - INFO - Added ENHANCED temporal sentiment: periods=20, avg_sentiment=0.536, confidence=1.000, news_count=10
+2025-08-07 18:02:35,061 - src.models.lstm_predictor - INFO - Adding comprehensive 5-year earnings features for training period...
+2025-08-07 18:02:35,061 - src.models.lstm_predictor - INFO - Requesting 57 earnings periods for 14.3 years of data
+2025-08-07 18:02:35,061 - src.analysis.fundamentals - INFO - Fetching 57 earnings periods for TSLA
+2025-08-07 18:02:35,384 - src.analysis.fundamentals - INFO - Finnhub: Retrieved 3 earnings events
+2025-08-07 18:02:35,389 - src.models.lstm_predictor - INFO - Found 3 earnings events for comprehensive analysis
+2025-08-07 18:02:35,418 - src.models.lstm_predictor - INFO - Added comprehensive earnings features: beat_rate=-1.000, avg_surprise=-0.085, volatility=0.000
+2025-08-07 18:02:35,445 - src.models.lstm_predictor - INFO - Generated 124 historical features from 3602 data points
+2025-08-07 18:02:35,481 - src.analysis.sentiment - INFO - Analyzing sentiment for TSLA over 7 days (7d)
+2025-08-07 18:02:35,481 - src.analysis.sentiment - INFO - Fetching news sentiment from Alpha Vantage for TSLA
+2025-08-07 18:02:35,636 - src.analysis.sentiment - INFO - Alpha Vantage response keys: ['Information']
+2025-08-07 18:02:35,636 - src.analysis.sentiment - WARNING - No 'feed' key in Alpha Vantage response for TSLA
+2025-08-07 18:02:35,636 - src.analysis.sentiment - WARNING - Unexpected response structure: {'Information': 'We have detected your API key as TROVSB0QXA6N4OFS and our standard API rate limit is 25 requests per day. Please subscribe to any of the premium plans at https://www.alphavantage.co/premium/ to instantly remove all daily rate limits.'}
+2025-08-07 18:02:35,636 - src.analysis.sentiment - INFO - Trying alternative news sources for TSLA
+2025-08-07 18:02:35,791 - src.analysis.sentiment - INFO - yfinance returned 10 news items for TSLA
+2025-08-07 18:02:38,300 - src.models.ensemble - INFO - Added 5 sentiment features
+2025-08-07 18:02:38,301 - src.models.ensemble - INFO - Selected 26 features for ensemble models
+2025-08-07 18:02:38,305 - src.models.ensemble - INFO - Training random_forest...
+2025-08-07 18:02:38,914 - src.models.ensemble - INFO - random_forest - Test R²: -0.0381
+2025-08-07 18:02:38,914 - src.models.ensemble - INFO - Training gradient_boosting...
+2025-08-07 18:02:41,780 - src.models.ensemble - INFO - gradient_boosting - Test R²: -0.1429
+2025-08-07 18:02:41,780 - src.models.ensemble - INFO - Training linear_regression...
+2025-08-07 18:02:41,793 - src.models.ensemble - INFO - linear_regression - Test R²: 0.0017
+2025-08-07 18:02:41,881 - src.models.ensemble - INFO - Ensemble models saved to data/models/TSLA/ensemble
+2025-08-07 18:02:41,916 - src.models.ensemble - INFO - Ensemble training completed - Test R²: -0.0273

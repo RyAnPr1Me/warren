@@ -123,7 +123,7 @@ class StockDataValidator:
         price_columns = ['Open', 'High', 'Low', 'Close']
         for col in price_columns:
             if col in data.columns:
-                data[col] = data[col].fillna(method='ffill').fillna(method='bfill')
+                data[col] = data[col].ffill().bfill()
         
         # For volume, fill with median
         if 'Volume' in data.columns:
@@ -305,6 +305,10 @@ class DataPipeline:
             raise ValueError(f"Data validation failed: {'; '.join(validation_result.issues)}")
         
         clean_data = validation_result.cleaned_data
+        if clean_data is None:
+            logger.error(f"Clean data is None for {symbol}")
+            raise ValueError(f"Data cleaning failed for {symbol}")
+        
         pipeline_report['clean_rows'] = len(clean_data)
         
         # Step 2: Additional preprocessing for ML
