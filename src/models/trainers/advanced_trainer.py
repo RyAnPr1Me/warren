@@ -27,7 +27,9 @@ class AdvancedTrainer:
                  thermal_limit_c: int = 85,
                  lr_decay_patience: int = 3,
                  lr_decay_factor: float = 0.5,
-                 profile_interval: int = 0):
+                 profile_interval: int = 0,
+                 keep_last_n: int = 3,
+                 shard_threshold_mb: int = 200):
         self.output_dir = output_dir
         self.gradient_accum_steps = gradient_accum_steps
         self.amp = amp and torch.cuda.is_available()
@@ -46,6 +48,71 @@ class AdvancedTrainer:
         self.lr_decay_factor = lr_decay_factor
         self.profile_interval = profile_interval
         self._since_improve = 0
+        self.keep_last_n = keep_last_n
+        self.shard_threshold_mb = shard_threshold_mb
+        self._initial_lr = None
+
+    def _save_checkpoint(self, model, opt, ckpt_path: Path, epoch: int, tag: str, extra: Dict[str, Any]):
+        state = {
+            'model': model.state_dict(),
+            'opt': opt.state_dict(),
+            'scaler': self.scaler.state_dict(),
+            'epoch': epoch,
+            'best_loss': self.best_loss,
+            'no_improve': self.no_improve_epochs,
+            'meta': extra
+        }
+        torch.save(state, ckpt_path)
+        # Shard if file large
+        size_mb = ckpt_path.stat().st_size / (1024*1024)
+        if size_mb > self.shard_threshold_mb:
+            shard_dir = ckpt_path.parent / f"{ckpt_path.stem}_shards"
+            shard_dir.mkdir(exist_ok=True)
+            sd = model.state_dict()
+            for k, v in sd.items():
+                torch.save(v, shard_dir / f"{k.replace('.', '_')}.pt")
+        # Rotate old checkpoints
+        self._rotate_checkpoints(ckpt_path.parent, prefix="epoch_")
+
+    def _rotate_checkpoints(self, directory: Path, prefix: str):
+        ckpts = sorted([p for p in directory.glob(f"{prefix}*.pt")], key=lambda p: p.stat().st_mtime)
+        if len(ckpts) > self.keep_last_n:
+            for p in ckpts[:-self.keep_last_n]:
+                try: p.unlink()
+                except Exception: pass
+
+    def _profile_epoch(self, model, dl, device: str, epoch: int):
+        if self.profile_interval <= 0 or epoch % self.profile_interval != 0:
+            return
+        try:
+            import torch.profiler as profiler
+            activities = [profiler.ProfilerActivity.CPU]
+            if torch.cuda.is_available():
+                activities.append(profiler.ProfilerActivity.CUDA)
+            with profiler.profile(activities=activities, record_shapes=True) as prof:
+                model.train()
+                for i, (xb, yb) in enumerate(dl):
+                    xb = xb.to(device); yb = yb.to(device)
+                    with autocast(enabled=self.amp):
+                        pred = model(xb).squeeze(-1)
+                        loss = nn.functional.mse_loss(pred, yb)
+                    if i > 5: break
+            report = prof.key_averages().table(sort_by="cpu_time_total", row_limit=15)
+            out_file = self.output_dir / f"profile_epoch{epoch}.txt"
+            out_file.write_text(report)
+            print(f"Saved profiler report to {out_file}")
+        except Exception as e:
+            print(f"Profiling failed: {e}")
+
+    def _suggest_hyperparams(self, epoch_loss: float, epoch: int):
+        # Simple heuristic suggestions
+        suggestions = []
+        if self._initial_lr and epoch_loss > self.best_loss * 1.02:
+            suggestions.append("Consider lowering learning rate or increasing gradient_accum_steps")
+        if self.elastic_batch and epoch % 5 == 0:
+            suggestions.append("Evaluate memory headroom to further increase batch size")
+        if suggestions:
+            (self.output_dir / "suggestions.txt").open("a").write(f"Epoch {epoch}: " + " | ".join(suggestions) + "\n")
 
     def _init_ddp(self):
         world_size = int(os.environ.get('WORLD_SIZE', '1'))
@@ -114,6 +181,8 @@ class AdvancedTrainer:
             self.no_improve_epochs = state.get('no_improve', 0)
             self.start_epoch = state.get('epoch', 1)
             print(f"Resumed from epoch {self.start_epoch}")
+        if not self._initial_lr:
+            self._initial_lr = opt.param_groups[0]['lr']
 
         for epoch in range(self.start_epoch, self.max_epochs + 1):
             if sampler is not None:
@@ -146,7 +215,13 @@ class AdvancedTrainer:
                 self.best_loss = epoch_loss
                 self.no_improve_epochs = 0
                 if self._rank() == 0:
-                    torch.save({'model': model.state_dict(), 'opt': opt.state_dict(), 'scaler': self.scaler.state_dict(), 'epoch': epoch+1, 'best_loss': self.best_loss, 'no_improve': self.no_improve_epochs}, ckpt_path)
+                    epoch_ckpt = ckpt_path.parent / f"epoch_{epoch}.pt"
+                    self._save_checkpoint(model, opt, epoch_ckpt, epoch+1, tag="epoch", extra={"improved": True})
+                    # update main pointer
+                    if ckpt_path.exists():
+                        try: ckpt_path.unlink()
+                        except Exception: pass
+                    epoch_ckpt.rename(ckpt_path)
             else:
                 self.no_improve_epochs += 1
             scheduler.step(epoch_loss)
@@ -155,6 +230,10 @@ class AdvancedTrainer:
             if new_bs != current_bs:
                 current_bs = new_bs
                 dl = DataLoader(ds, batch_size=current_bs, shuffle=(sampler is None), sampler=sampler)
+            # Profiling & suggestions
+            if self._rank() == 0:
+                self._profile_epoch(model, dl, device, epoch)
+                self._suggest_hyperparams(epoch_loss, epoch)
             if self.no_improve_epochs >= self.early_stop_patience:
                 if self._rank() == 0:
                     print('Early stopping triggered')

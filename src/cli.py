@@ -33,6 +33,12 @@ def build_parser() -> argparse.ArgumentParser:
     f_predict = sub.add_parser("predict", help="Predict next-day return")
     f_predict.add_argument("symbol")
 
+    f_k8s = sub.add_parser("k8s-job", help="Generate K8s training job YAML")
+    f_k8s.add_argument("--name", default="train-job")
+    f_k8s.add_argument("--image", default="repo/ai-trading:latest")
+    f_k8s.add_argument("--gpus", type=int, default=1)
+    f_k8s.add_argument("--command", default="python cli.py train AAPL --advanced")
+
     return p
 
 
@@ -148,6 +154,10 @@ def main():
         cmd_train(args)
     elif args.command == "predict":
         cmd_predict(args)
+    elif args.command == "k8s-job":
+        from src.utils.k8s_job import generate_k8s_job
+        yaml = generate_k8s_job(args.name, args.image, args.gpus, args.command)
+        print(yaml)
     else:
         raise SystemExit("Unknown command")
 
