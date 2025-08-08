@@ -1,8 +1,10 @@
 from __future__ import annotations
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List, Dict, Any
 import math
+import time
+import psutil
 import torch
 from torch.utils.data import DataLoader, DistributedSampler
 from torch import nn
@@ -18,7 +20,14 @@ class AdvancedTrainer:
                  amp: bool = True,
                  max_epochs: int = 50,
                  early_stop_patience: int = 10,
-                 resume: bool = True):
+                 resume: bool = True,
+                 elastic_batch: bool = True,
+                 base_batch_size: int = 64,
+                 max_batch_size: int = 512,
+                 thermal_limit_c: int = 85,
+                 lr_decay_patience: int = 3,
+                 lr_decay_factor: float = 0.5,
+                 profile_interval: int = 0):
         self.output_dir = output_dir
         self.gradient_accum_steps = gradient_accum_steps
         self.amp = amp and torch.cuda.is_available()
@@ -29,6 +38,14 @@ class AdvancedTrainer:
         self.best_loss = float('inf')
         self.no_improve_epochs = 0
         self.start_epoch = 1
+        self.elastic_batch = elastic_batch
+        self.base_batch_size = base_batch_size
+        self.max_batch_size = max_batch_size
+        self.thermal_limit_c = thermal_limit_c
+        self.lr_decay_patience = lr_decay_patience
+        self.lr_decay_factor = lr_decay_factor
+        self.profile_interval = profile_interval
+        self._since_improve = 0
 
     def _init_ddp(self):
         world_size = int(os.environ.get('WORLD_SIZE', '1'))
@@ -39,6 +56,37 @@ class AdvancedTrainer:
     def _rank(self):
         return torch.distributed.get_rank() if torch.distributed.is_initialized() else 0
 
+    def _gpu_temp(self) -> Optional[float]:
+        # Placeholder: would query nvidia-smi; on non-GPU systems return None
+        return None
+
+    def _should_throttle(self) -> bool:
+        cpu_temp = None
+        try:
+            # psutil sensors_temperatures may not be available on macOS; guard access
+            temps = psutil.sensors_temperatures() if hasattr(psutil, 'sensors_temperatures') else {}
+            for k, arr in temps.items():
+                if arr:
+                    cpu_temp = max([t.current for t in arr if hasattr(t, 'current')])
+        except Exception:
+            cpu_temp = None
+        gpu_temp = self._gpu_temp()
+        over = False
+        if cpu_temp and cpu_temp > self.thermal_limit_c:
+            over = True
+        if gpu_temp and gpu_temp > self.thermal_limit_c:
+            over = True
+        return over
+
+    def _adjust_batch(self, current_bs: int, improvement: bool) -> int:
+        if not self.elastic_batch:
+            return current_bs
+        if improvement and current_bs < self.max_batch_size:
+            return min(current_bs * 2, self.max_batch_size)
+        if self._should_throttle() and current_bs > self.base_batch_size:
+            return max(current_bs // 2, self.base_batch_size)
+        return current_bs
+
     def train(self, df, features, target, seq_len: int, batch_size: int, lr: float):
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
         world_size = self._init_ddp()
@@ -46,12 +94,14 @@ class AdvancedTrainer:
         if len(ds) == 0:
             raise ValueError('Not enough data')
         sampler = DistributedSampler(ds) if world_size > 1 else None
-        dl = DataLoader(ds, batch_size=batch_size, shuffle=(sampler is None), sampler=sampler)
+        current_bs = batch_size
+        dl = DataLoader(ds, batch_size=current_bs, shuffle=(sampler is None), sampler=sampler)
         model = LSTMBaseline(input_dim=len(features)).to(device)
         if world_size > 1:
             model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[int(os.environ.get('LOCAL_RANK','0'))])
         opt = AdamW(model.parameters(), lr=lr)
         loss_fn = nn.MSELoss()
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, mode='min', factor=self.lr_decay_factor, patience=self.lr_decay_patience, verbose=True)
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
         ckpt_path = self.output_dir / 'checkpoint.pt'
@@ -71,6 +121,7 @@ class AdvancedTrainer:
             model.train()
             total = 0.0; count = 0
             opt.zero_grad()
+            start_time = time.time()
             for step, (xb, yb) in enumerate(dl, start=1):
                 xb = xb.to(device); yb = yb.to(device)
                 with autocast(enabled=self.amp):
@@ -87,7 +138,8 @@ class AdvancedTrainer:
                 count += len(xb)
             epoch_loss = total / count if count else math.inf
             if self._rank() == 0:
-                print(f"Epoch {epoch} loss={epoch_loss:.6f}")
+                elapsed = time.time() - start_time
+                print(f"Epoch {epoch} loss={epoch_loss:.6f} bs={current_bs} lr={opt.param_groups[0]['lr']:.2e} time={elapsed:.2f}s")
             # Early stopping
             improved = epoch_loss < self.best_loss - 1e-6
             if improved:
@@ -97,6 +149,12 @@ class AdvancedTrainer:
                     torch.save({'model': model.state_dict(), 'opt': opt.state_dict(), 'scaler': self.scaler.state_dict(), 'epoch': epoch+1, 'best_loss': self.best_loss, 'no_improve': self.no_improve_epochs}, ckpt_path)
             else:
                 self.no_improve_epochs += 1
+            scheduler.step(epoch_loss)
+            # Elastic batch adjust after scheduler step
+            new_bs = self._adjust_batch(current_bs, improved)
+            if new_bs != current_bs:
+                current_bs = new_bs
+                dl = DataLoader(ds, batch_size=current_bs, shuffle=(sampler is None), sampler=sampler)
             if self.no_improve_epochs >= self.early_stop_patience:
                 if self._rank() == 0:
                     print('Early stopping triggered')
