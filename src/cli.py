@@ -26,6 +26,9 @@ def build_parser() -> argparse.ArgumentParser:
     f_train.add_argument("--model", choices=["lstm","transformer","tcn"], default="lstm")
     f_train.add_argument("--mi-select", action="store_true", help="Apply mutual information feature selection")
     f_train.add_argument("--mi-top-k", type=int, default=50)
+    f_train.add_argument("--advanced", action="store_true", help="Use advanced Phase 3 trainer (AMP, resume, grad-accum, early stop)")
+    f_train.add_argument("--grad-accum", type=int, default=1)
+    f_train.add_argument("--no-amp", action="store_true")
 
     f_predict = sub.add_parser("predict", help="Predict next-day return")
     f_predict.add_argument("symbol")
@@ -58,7 +61,11 @@ def cmd_train(args):
         mi_df = mutual_information_rank(df, features, "target_5d")
         features = select_top_k(mi_df, args.mi_top_k)
         print(f"Selected top {len(features)} features via MI")
-    if args.model == "lstm":
+    if args.advanced and args.model == "lstm":
+        from src.models.trainers.advanced_trainer import AdvancedTrainer
+        trainer = AdvancedTrainer(output_dir=Path("models"), gradient_accum_steps=args.grad_accum, amp=not args.no_amp, max_epochs=10, early_stop_patience=3, resume=True)
+        model = trainer.train(df, features, "target_5d", cfg.seq_len, cfg.batch_size, cfg.lr)
+    elif args.model == "lstm":
         model = train_lstm(
             df,
             features=features,
