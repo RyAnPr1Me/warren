@@ -1,0 +1,52 @@
+{
+    "data_settings": {
+        "start_date": "2010-01-01",
+        "end_date": "auto",
+        "min_rows": 20000,
+        "save_data": true,
+        "data_path": "large_stock_dataset.csv",
+        "test_size": 0.2
+    },
+    
+    "model_settings": { 
+        "hidden_dim": 256,
+        "num_layers": 3,
+        "num_heads": 8,
+        "dropout": 0.3,
+        "bidirectional": true,
+        "seq_length": 60,
+        "is_regression": false
+    },
+    
+    "training_settings": {
+        "batch_size": 128,
+        "epochs": 100,
+        "learning_rate": 0.0005,
+        "weight_decay": 0.0001,
+        "patience": 15,
+        "seed": 42
+    },
+    
+    "output_settings": {
+        "model_dir": "models/large_stock_model",
+        "save_results": true,
+        "visualize": true
+    },
+    
+    "stocks": [
+        "AAPL", "MSFT", "GOOGL", "AMZN", "META", "NVDA", "INTC", "AMD", "TSLA", "ORCL", 
+        "CSCO", "IBM", "ADBE", "CRM", "NFLX", "PYPL", "QCOM", "AVGO", "TXN", "MU",
+        "JPM", "BAC", "WFC", "GS", "MS", "C", "BLK", "AXP", "V", "MA", 
+        "PNC", "SCHW", "CME", "CB", "MMC", "TFC", "USB", "ALL", "AIG", "BK",
+        "JNJ", "PFE", "MRK", "ABBV", "LLY", "ABT", "UNH", "TMO", "DHR", "BMY",
+        "AMGN", "MDT", "ISRG", "GILD", "CVS", "VRTX", "ZTS", "REGN", "HUM", "BIIB",
+        "PG", "KO", "PEP", "WMT", "COST", "MCD", "SBUX", "NKE", "DIS", "HD",
+        "LOW", "TGT", "MDLZ", "CL", "EL", "ROST", "TJX", "YUM", "MAR", "CMG",
+        "GE", "HON", "MMM", "CAT", "DE", "BA", "LMT", "RTX", "UPS", "FDX",
+        "UNP", "CSX", "ETN", "EMR", "ITW", "PH", "GD", "NSC", "CARR", "PCAR",
+        "XOM", "CVX", "COP", "EOG", "PSX", "PXD", "VLO", "SLB", "MPC", "OXY",
+        "T", "VZ", "TMUS", "CMCSA",
+        "NEE", "DUK", "SO", "D", "AEP",
+        "AMT", "PLD", "CCI", "SPG", "EQIX"
+    ]
+}
