@@ -33,7 +33,6 @@ import time
 import copy
 import logging
 import argparse
-import multiprocessing
 from datetime import datetime
 from pathlib import Path
 
@@ -192,7 +191,7 @@ def get_system_profile() -> dict:
         hidden_dim_hint – suggested model hidden dimension
     """
     profile: dict = {}
-    cpu_count = multiprocessing.cpu_count()
+    cpu_count = os.cpu_count() or 1
     profile["cpu_count"] = cpu_count
     # Reserve one core for the main process; cap at 8 to avoid IPC overhead
     profile["num_workers"] = min(8, max(0, cpu_count - 1))
@@ -763,7 +762,7 @@ def print_system_info(device: torch.device, sys_profile: dict = None) -> None:
             table.add_row("GPU Name",   torch.cuda.get_device_name(0))
             gb = torch.cuda.get_device_properties(0).total_memory / 1e9
             table.add_row("GPU Memory", f"{gb:.1f} GB")
-        table.add_row("CPU Cores",    str(sp.get("cpu_count", multiprocessing.cpu_count())))
+        table.add_row("CPU Cores",    str(sp.get("cpu_count", os.cpu_count() or 1)))
         if sp.get("ram_gb"):
             table.add_row("System RAM",   f"{sp['ram_gb']} GB")
         table.add_row("Rich UI",      "✓ enabled" if RICH_AVAILABLE else "✗ disabled")
@@ -1656,7 +1655,7 @@ if __name__ == "__main__":
                     help="Fetch and include fundamental data (P/E, beta, etc.)")
 
     # ── Model ─────────────────────────────────────────────────────────────────
-    ap.add_argument("--model_type",   type=str,   default=None,
+    ap.add_argument("--model_type",   type=str,   default="hybrid",
                     choices=["hybrid", "tft"],
                     help="Model architecture: hybrid (LSTM+Attn+TCN) or tft")
     ap.add_argument("--hidden_dim",   type=int,   default=None,
