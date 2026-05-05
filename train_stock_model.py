@@ -1725,7 +1725,7 @@ def main(args) -> dict:
     # ── Normalise + split ──────────────────────────────────────────────────────
     # Split first so the scaler is fit only on training data (no leakage).
     if not args.silent:
-        cprint("[cyan]Splitting and normalising features…[/cyan]")
+        cprint("[cyan]Splitting and normalizing features…[/cyan]")
     X_train, X_test, y_train, y_test = split_train_test(
         data, test_size=args.test_size, time_based=True
     )

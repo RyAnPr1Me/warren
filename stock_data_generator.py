@@ -954,7 +954,7 @@ def normalize_train_test_features(
     """Fit a scaler on the training set only, then transform both sets.
 
     This prevents data leakage: test-set statistics never influence the scaler
-    used to normalise the training data.
+    used to normalize the training data.
 
     Parameters
     ----------
