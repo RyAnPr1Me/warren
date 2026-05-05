@@ -75,7 +75,14 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
-from torch.optim.lr_scheduler import OneCycleLR
+from torch.optim.lr_scheduler import OneCycleLR, CosineAnnealingWarmRestarts
+
+# SWA (available since PyTorch 1.6)
+try:
+    from torch.optim.swa_utils import AveragedModel, SWALR
+    SWA_AVAILABLE = True
+except ImportError:
+    SWA_AVAILABLE = False
 
 try:                                    # PyTorch ≥ 2.0
     from torch.amp import autocast, GradScaler as _GradScaler
@@ -307,9 +314,78 @@ class MultiTaskStockDataset(Dataset):
         return x, ys
 
 
+class AugmentedStockDataset(Dataset):
+    """Training-time augmentation wrapper for any stock dataset.
+
+    Applies two independent augmentations to each sample:
+    - **Gaussian noise**: adds small random perturbations to every feature/timestep.
+    - **Feature masking**: zeros out entire feature channels with probability
+      ``mask_prob`` — forces the model to not over-rely on individual features.
+
+    Only use this wrapper for the *training* loader; leave the validation loader
+    unaugmented so metrics are evaluated on clean data.
+    """
+
+    def __init__(self, dataset: Dataset, noise_std: float = 0.02,
+                 mask_prob: float = 0.05):
+        self.dataset   = dataset
+        self.noise_std = noise_std
+        self.mask_prob = mask_prob
+
+    def __len__(self) -> int:
+        return len(self.dataset)
+
+    def __getitem__(self, idx):
+        x, y = self.dataset[idx]
+        if self.noise_std > 0.0:
+            x = x + torch.randn_like(x) * self.noise_std
+        if self.mask_prob > 0.0:
+            # Same mask applied across all timesteps for a given feature
+            mask = torch.bernoulli(
+                torch.full((x.size(-1),), 1.0 - self.mask_prob)
+            )
+            x = x * mask.unsqueeze(0)   # (1, D) → broadcast over (T, D)
+        return x, y
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Model components
 # ══════════════════════════════════════════════════════════════════════════════
+
+class SinusoidalPositionalEncoding(nn.Module):
+    """Sinusoidal positional encoding (Vaswani et al., 2017).
+
+    Adds a deterministic position-dependent signal to a sequence representation
+    so that the self-attention mechanism can distinguish *where* each timestep
+    sits in the window — information the LSTM passes implicitly but which
+    dot-product attention would otherwise ignore.
+
+    Parameters
+    ----------
+    d_model : int
+        Feature dimension of the sequence (must match the tensor fed to this layer).
+    max_len : int
+        Maximum sequence length supported (512 is more than enough for daily bars).
+    dropout : float
+        Optional dropout applied after adding the encoding.
+    """
+
+    def __init__(self, d_model: int, max_len: int = 512, dropout: float = 0.0):
+        super().__init__()
+        self.drop = nn.Dropout(p=dropout) if dropout > 0.0 else nn.Identity()
+        pe = torch.zeros(max_len, d_model)
+        pos = torch.arange(0, max_len, dtype=torch.float32).unsqueeze(1)
+        i   = torch.arange(0, d_model, 2, dtype=torch.float32)
+        div = torch.exp(i * (-math.log(10_000.0) / d_model))
+        pe[:, 0::2] = torch.sin(pos * div)
+        # Handle odd d_model
+        pe[:, 1::2] = torch.cos(pos * div[:pe[:, 1::2].shape[1]])
+        self.register_buffer("pe", pe.unsqueeze(0))  # (1, max_len, d_model)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """x: (B, T, D)  →  (B, T, D) with positional signal added."""
+        return self.drop(x + self.pe[:, :x.size(1), :])
+
 
 class SelfAttention(nn.Module):
     """Scaled dot-product multi-head self-attention."""
@@ -375,7 +451,7 @@ class GatedResidualNetwork(nn.Module):
 
     def forward(self, x: torch.Tensor, context: torch.Tensor = None) -> torch.Tensor:
         inp = torch.cat([x, context], dim=-1) if context is not None else x
-        h1  = torch.elu(self.fc1(inp))
+        h1  = nn.functional.elu(self.fc1(inp))
         h2  = self.dropout(self.fc2(h1))
         gate = torch.sigmoid(self.gate_fc(h1))
         out = self.layer_norm(gate * h2 + self.skip(x))
@@ -406,6 +482,8 @@ class StockPredictionModel(nn.Module):
             bidirectional=bidirectional,
         )
         lstm_dim = hidden_dim * (2 if bidirectional else 1)
+        # Positional encoding applied to LSTM outputs before self-attention
+        self.pos_enc    = SinusoidalPositionalEncoding(lstm_dim, dropout=dropout * 0.5)
         self.attention  = SelfAttention(lstm_dim, num_heads=num_heads, dropout=dropout)
         self.tcn1       = TCNBlock(lstm_dim, lstm_dim, kernel_size=3, dilation=1, dropout=dropout)
         self.tcn2       = TCNBlock(lstm_dim, lstm_dim, kernel_size=3, dilation=2, dropout=dropout)
@@ -430,6 +508,7 @@ class StockPredictionModel(nn.Module):
 
     def _encode(self, x: torch.Tensor) -> torch.Tensor:
         lstm_out, _ = self.lstm(x)
+        lstm_out = self.pos_enc(lstm_out)           # inject temporal positions
         att  = self.layer_norm1(self.attention(lstm_out))
         tcn  = att.transpose(1, 2)
         tcn  = self.tcn3(self.tcn2(self.tcn1(tcn))).transpose(1, 2)
@@ -469,6 +548,8 @@ class TemporalFusionTransformer(nn.Module):
             hidden_dim, hidden_dim, num_layers=num_layers,
             batch_first=True, dropout=dropout if num_layers > 1 else 0.0,
         )
+        # Positional encoding applied to LSTM outputs before interpretable attention
+        self.pos_enc = SinusoidalPositionalEncoding(hidden_dim, dropout=dropout * 0.5)
         self.attn_grn = GatedResidualNetwork(hidden_dim, hidden_dim, hidden_dim, dropout=dropout)
         self.attention = SelfAttention(hidden_dim, num_heads=num_heads, dropout=dropout)
         self.post_attn_grn = GatedResidualNetwork(hidden_dim, hidden_dim, hidden_dim, dropout=dropout)
@@ -495,6 +576,7 @@ class TemporalFusionTransformer(nn.Module):
     def forward(self, x: torch.Tensor):
         selected = self._select_vars(x)
         lstm_out, _ = self.lstm(selected)
+        lstm_out = self.pos_enc(lstm_out)           # inject temporal positions
         attn_in  = self.attn_grn(lstm_out)
         attn_out = self.attention(attn_in)
         post     = self.post_attn_grn(attn_out + attn_in)
@@ -640,7 +722,9 @@ def validate(model: nn.Module, loader: DataLoader, criterion,
 def prepare_data(X_train, X_test, y_train, y_test,
                  seq_length: int = 30, batch_size: int = 64,
                  multi_task: bool = False, data: pd.DataFrame = None,
-                 num_workers: int = 0, pin_memory: bool = False):
+                 num_workers: int = 0, pin_memory: bool = False,
+                 augment: bool = False, noise_std: float = 0.02,
+                 mask_prob: float = 0.05):
     """Build DataLoader objects for train and test splits."""
     _ldr_kwargs = dict(
         num_workers=num_workers,
@@ -657,12 +741,16 @@ def prepare_data(X_train, X_test, y_train, y_test,
             te_yd = {k: data[v].values[train_sz:] for k, v in available.items()}
             train_ds = MultiTaskStockDataset(X_train.values, tr_yd, seq_length)
             test_ds  = MultiTaskStockDataset(X_test.values,  te_yd, seq_length)
+            if augment:
+                train_ds = AugmentedStockDataset(train_ds, noise_std=noise_std, mask_prob=mask_prob)
             return (
                 DataLoader(train_ds, batch_size=batch_size, shuffle=True,  **_ldr_kwargs),
                 DataLoader(test_ds,  batch_size=batch_size, shuffle=False, **_ldr_kwargs),
             )
     train_ds = StockDataset(X_train.values, y_train.values, seq_length)
     test_ds  = StockDataset(X_test.values,  y_test.values,  seq_length)
+    if augment:
+        train_ds = AugmentedStockDataset(train_ds, noise_std=noise_std, mask_prob=mask_prob)
     return (
         DataLoader(train_ds, batch_size=batch_size, shuffle=True,  **_ldr_kwargs),
         DataLoader(test_ds,  batch_size=batch_size, shuffle=False, **_ldr_kwargs),
@@ -1097,6 +1185,10 @@ def train_model(X_train, X_test, y_train, y_test, config: dict,
     num_workers = sp.get("num_workers", 0)
     pin_memory  = sp.get("pin_memory", False)
 
+    augment   = config.get("augment", False)
+    noise_std = float(config.get("noise_std", 0.02))
+    mask_prob = float(config.get("mask_prob", 0.05))
+
     input_dim = X_train.shape[1]
     train_loader, test_loader = prepare_data(
         X_train, X_test, y_train, y_test,
@@ -1105,6 +1197,9 @@ def train_model(X_train, X_test, y_train, y_test, config: dict,
         multi_task=config.get("multi_task", False),
         num_workers=num_workers,
         pin_memory=pin_memory,
+        augment=augment,
+        noise_std=noise_std,
+        mask_prob=mask_prob,
     )
 
     model = build_model(config.get("model_type", "hybrid"), input_dim, config).to(device)
@@ -1116,6 +1211,23 @@ def train_model(X_train, X_test, y_train, y_test, config: dict,
     grad_clip  = float(config.get("grad_clip", 1.0))
 
     # ── Loss function ─────────────────────────────────────────────────────────
+    # Auto-compute pos_weight from training labels to correct for class imbalance
+    auto_pos_weight: torch.Tensor | None = None
+    if not is_reg and not config.get("focal_loss", False):
+        try:
+            labels = y_train.values if hasattr(y_train, "values") else np.asarray(y_train)
+            n_pos  = float((labels > 0.5).sum())
+            n_neg  = float(len(labels) - n_pos)
+            if n_pos > 0 and n_neg > 0:
+                pw_val = n_neg / n_pos
+                auto_pos_weight = torch.tensor([pw_val], device=device)
+                logger.info(
+                    f"Auto pos_weight={pw_val:.3f}  "
+                    f"(pos={n_pos:.0f}, neg={n_neg:.0f}, ratio={pw_val:.2f})"
+                )
+        except Exception as exc:
+            logger.warning(f"Could not compute pos_weight: {exc}")
+
     if is_reg:
         criterion = nn.MSELoss()
     elif config.get("focal_loss", False):
@@ -1126,18 +1238,52 @@ def train_model(X_train, X_test, y_train, y_test, config: dict,
     else:
         label_smoothing = float(config.get("label_smoothing", 0.0))
         if label_smoothing > 0.0:
-            # Approximate label smoothing for BCEWithLogitsLoss via target clipping
-            criterion = _LabelSmoothBCE(label_smoothing)
+            criterion = _LabelSmoothBCE(label_smoothing, pos_weight=auto_pos_weight)
         else:
-            criterion = nn.BCEWithLogitsLoss()
+            criterion = nn.BCEWithLogitsLoss(pos_weight=auto_pos_weight)
 
     optimizer  = optim.AdamW(model.parameters(),
                               lr=config["learning_rate"],
                               weight_decay=config.get("weight_decay", 1e-5))
-    scheduler  = OneCycleLR(optimizer, max_lr=config["learning_rate"],
-                             steps_per_epoch=len(train_loader),
-                             epochs=config["epochs"],
-                             pct_start=0.3, anneal_strategy="cos")
+
+    # Define epochs early — needed by both scheduler and SWA setup below
+    epochs  = config["epochs"]
+    patience = config.get("patience", 10)
+
+    # ── Scheduler ─────────────────────────────────────────────────────────────
+    scheduler_type = config.get("scheduler", "onecycle")
+    if scheduler_type == "cosine_warm":
+        T_0 = int(config.get("cosine_T0", max(10, epochs // 3)))
+        scheduler = CosineAnnealingWarmRestarts(optimizer, T_0=T_0, T_mult=2, eta_min=1e-7)
+        _batch_sched = None      # stepped per epoch, not per batch
+        _epoch_sched = scheduler
+    else:
+        scheduler = OneCycleLR(
+            optimizer, max_lr=config["learning_rate"],
+            steps_per_epoch=len(train_loader),
+            epochs=epochs, pct_start=0.3, anneal_strategy="cos",
+        )
+        _batch_sched = scheduler  # stepped per batch inside train_epoch
+        _epoch_sched = None
+
+    # ── SWA (Stochastic Weight Averaging) ─────────────────────────────────────
+    use_swa = config.get("swa", False) and SWA_AVAILABLE
+    if config.get("swa", False) and not SWA_AVAILABLE:
+        logger.warning("SWA requested but torch.optim.swa_utils not available; skipping.")
+    swa_model       = None
+    swa_sched       = None
+    swa_start_epoch = epochs  # default: SWA never kicks in
+    if use_swa:
+        swa_model       = AveragedModel(model)
+        swa_lr          = float(config.get("swa_lr", config["learning_rate"] * 0.05))
+        swa_sched       = SWALR(optimizer, swa_lr=swa_lr, anneal_epochs=5)
+        swa_start_frac  = float(config.get("swa_start", 0.75))
+        swa_start_epoch = max(1, int(epochs * swa_start_frac))
+        logger.info(
+            f"SWA enabled: starts at epoch {swa_start_epoch}/{epochs}, "
+            f"swa_lr={swa_lr:.2e}"
+        )
+
     scaler = _make_scaler()
 
     history: dict = {"train_loss": [], "val_loss": [], "metrics": [], "epoch_times": []}
@@ -1149,8 +1295,6 @@ def train_model(X_train, X_test, y_train, y_test, config: dict,
     os.makedirs(config["model_dir"], exist_ok=True)
     best_model_path    = os.path.join(config["model_dir"], "best_model.pth")
     resume_ckpt_path   = os.path.join(config["model_dir"], "training_checkpoint.pth")
-    patience           = config.get("patience", 10)
-    epochs             = config["epochs"]
 
     # ── Auto-detect interrupted run ───────────────────────────────────────────
     if resume_from is None and os.path.exists(resume_ckpt_path):
@@ -1232,9 +1376,19 @@ def train_model(X_train, X_test, y_train, y_test, config: dict,
             ep_start = time.time()
             train_loss = train_epoch(
                 model, train_loader, optimizer, criterion,
-                device, scaler, scheduler, multi_task=multi_task,
+                device, scaler,
+                scheduler=_batch_sched,   # None for cosine_warm (stepped per epoch below)
+                multi_task=multi_task,
                 grad_clip=grad_clip,
             )
+
+            # ── Per-epoch scheduler step ──────────────────────────────────────
+            if use_swa and epoch >= swa_start_epoch:
+                swa_model.update_parameters(model)
+                swa_sched.step()
+            elif _epoch_sched is not None:
+                _epoch_sched.step()
+
             val_metrics = validate(
                 model, test_loader, criterion, device,
                 is_regression=is_reg, multi_task=multi_task,
@@ -1250,6 +1404,7 @@ def train_model(X_train, X_test, y_train, y_test, config: dict,
                 f"{'RMSE' if is_reg else 'F1'}="
                 f"{val_metrics.get('rmse' if is_reg else 'f1', 0):.4f} "
                 f"t={ep_time:.1f}s"
+                + (" [SWA]" if use_swa and epoch >= swa_start_epoch else "")
             )
             monitor  = val_metrics.get("rmse" if is_reg else "f1", 0.0)
             improved = (monitor < best_val_metric) if is_reg else (monitor > best_val_metric)
@@ -1276,13 +1431,14 @@ def train_model(X_train, X_test, y_train, y_test, config: dict,
             if progress and epoch_task is not None:
                 m_key = "rmse" if is_reg else "f1"
                 mv    = val_metrics.get(m_key, 0)
+                swa_tag = " 🔀SWA" if use_swa and epoch >= swa_start_epoch else ""
                 progress.update(
                     epoch_task, advance=1,
                     description=(
                         f"[cyan]Epoch {epoch+1}/{epochs}  "
                         f"loss={train_loss:.4f}  "
                         f"{m_key.upper()}={mv:.4f}  "
-                        f"{'⭐' if improved else '  '}"
+                        f"{'⭐' if improved else '  '}{swa_tag}"
                     ),
                 )
             if live is not None:
@@ -1315,10 +1471,24 @@ def train_model(X_train, X_test, y_train, y_test, config: dict,
         _run_training_loop()
 
     total_time = time.time() - start_time
-    # Restore best model
-    if best_model_state is not None:
+
+    # ── SWA finalisation ──────────────────────────────────────────────────────
+    # No BN layers (only LayerNorm) so we skip update_bn and use swa_model directly
+    eval_model = model
+    if use_swa and swa_model is not None:
+        # Restore SWA-averaged weights into the base model for saving/eval
+        try:
+            model.load_state_dict(swa_model.module.state_dict())
+            eval_model = model
+            if not silent:
+                cprint("[green]✓ SWA weights applied to final model.[/green]")
+            logger.info("SWA weights applied.")
+        except Exception as exc:
+            logger.warning(f"Could not apply SWA weights: {exc}")
+    elif best_model_state is not None:
         model.load_state_dict(best_model_state)
-    final_metrics = validate(model, test_loader, criterion, device,
+
+    final_metrics = validate(eval_model, test_loader, criterion, device,
                              is_regression=is_reg, multi_task=multi_task)
 
     # Remove the transient training checkpoint now that training finished cleanly
@@ -1340,13 +1510,13 @@ class _LabelSmoothBCE(nn.Module):
 
     Targets are softened from {0, 1} to {ε/2, 1-ε/2} before computing
     BCEWithLogitsLoss, which reduces overconfidence and acts as a light
-    regulariser.
+    regulariser.  Supports ``pos_weight`` for class imbalance correction.
     """
 
-    def __init__(self, smoothing: float = 0.1):
+    def __init__(self, smoothing: float = 0.1, pos_weight: torch.Tensor = None):
         super().__init__()
         self.smoothing = smoothing
-        self._bce = nn.BCEWithLogitsLoss()
+        self._bce = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
 
     def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         smooth = self.smoothing
@@ -1518,7 +1688,24 @@ def main(args) -> dict:
         "focal_alpha":      float(getattr(args, "focal_alpha",      0.25)),
         "focal_gamma":      float(getattr(args, "focal_gamma",      2.0)),
         "label_smoothing":  float(getattr(args, "label_smoothing",  0.0)),
+        # ── Training augmentation ──────────────────────────────────────────
+        "augment":          bool(getattr(args, "augment",           False)),
+        "noise_std":        float(getattr(args, "noise_std",        0.02)),
+        "mask_prob":        float(getattr(args, "mask_prob",        0.05)),
+        # ── Stochastic Weight Averaging ────────────────────────────────────
+        "swa":              bool(getattr(args, "swa",               False)),
+        "swa_start":        float(getattr(args, "swa_start",        0.75)),
+        "swa_lr":           float(getattr(args, "swa_lr",           0.0)),
+        # ── Scheduler ─────────────────────────────────────────────────────
+        "scheduler":        str(getattr(args, "scheduler",          "onecycle")),
+        "cosine_T0":        int(getattr(args, "cosine_T0",          0)),
     }
+    # Derive swa_lr default from learning_rate when not explicitly set
+    if config["swa_lr"] == 0.0:
+        config["swa_lr"] = config["learning_rate"] * 0.05
+    # cosine_T0 default: 1/3 of epochs when not set
+    if config["cosine_T0"] == 0:
+        config["cosine_T0"] = max(10, config["epochs"] // 3)
 
     if not args.silent:
         print_config_table(config)
@@ -1695,6 +1882,30 @@ if __name__ == "__main__":
                     help="Focal Loss gamma focusing exponent (default: 2.0)")
     ap.add_argument("--label_smoothing", type=float, default=0.0,
                     help="Label smoothing ε for BCE loss (0 = disabled, e.g. 0.05)")
+
+    # ── Data augmentation ────────────────────────────────────────────────────
+    ap.add_argument("--augment",   action="store_true",
+                    help="Enable training-time sequence augmentation (noise + feature masking)")
+    ap.add_argument("--noise_std", type=float, default=0.02,
+                    help="Std-dev of Gaussian noise added per step during augmentation (default: 0.02)")
+    ap.add_argument("--mask_prob", type=float, default=0.05,
+                    help="Probability of masking an entire feature channel during augmentation (default: 0.05)")
+
+    # ── Scheduler ────────────────────────────────────────────────────────────
+    ap.add_argument("--scheduler",  type=str,   default="onecycle",
+                    choices=["onecycle", "cosine_warm"],
+                    help="LR scheduler: 'onecycle' (default) or 'cosine_warm' "
+                         "(CosineAnnealingWarmRestarts, better for long runs)")
+    ap.add_argument("--cosine_T0",  type=int,   default=0,
+                    help="Period of first restart for cosine_warm (0 = auto: epochs//3)")
+
+    # ── SWA ──────────────────────────────────────────────────────────────────
+    ap.add_argument("--swa",        action="store_true",
+                    help="Enable Stochastic Weight Averaging (improves generalisation)")
+    ap.add_argument("--swa_start",  type=float, default=0.75,
+                    help="Fraction of training after which SWA begins (default: 0.75)")
+    ap.add_argument("--swa_lr",     type=float, default=0.0,
+                    help="SWA learning rate (0 = auto: learning_rate × 0.05)")
 
     # ── Walk-forward CV ───────────────────────────────────────────────────────
     ap.add_argument("--walk_forward", action="store_true",

@@ -10,8 +10,8 @@ Warren combines a **180+ feature engineering engine**, a **hybrid deep-learning 
 | Category | What's included |
 |---|---|
 | **Data Engine** | 180+ TA indicators • Parallel download • Disk caching • Multi-timeframe • Market context (SPY/VIX/Sector ETFs) • Fundamental data • Multi-horizon targets |
-| **Models** | Hybrid BiLSTM + Multi-Head Attention + TCN (3 dilated layers) • Temporal Fusion Transformer (TFT) variant • Multi-task learning across 1/5/10/21-day horizons |
-| **Training** | AMP mixed-precision • Gradient clipping • OneCycleLR + warm-up • Focal Loss & label smoothing • Early stopping • Auto-resume from checkpoint • Walk-forward cross-validation • Optuna hyperparameter search |
+| **Models** | Hybrid BiLSTM + Multi-Head Attention + TCN (3 dilated layers) • Temporal Fusion Transformer (TFT) variant • Multi-task learning across 1/5/10/21-day horizons • **Sinusoidal positional encoding** on attention path |
+| **Training** | AMP mixed-precision • Gradient clipping • OneCycleLR / **CosineAnnealingWarmRestarts** • Focal Loss & label smoothing • **Auto pos_weight** (class-imbalance correction) • **Sequence augmentation** (noise + feature masking) • **SWA** (Stochastic Weight Averaging) • Early stopping • Auto-resume from checkpoint • Walk-forward cross-validation • Optuna hyperparameter search |
 | **System-aware** | Auto-detects CPU cores, RAM, GPU VRAM → tunes `batch_size`, `hidden_dim`, `num_workers`, `pin_memory` automatically |
 | **Terminal UI** | Rich live epoch table • Progress bars • Interactive wizard • Coloured metrics • Feature importance bar chart |
 | **Inference** | `predict.py` — one command real-time predictions with confidence bars |
@@ -120,7 +120,27 @@ python train_stock_model.py --model_dir models
 | `--label_smoothing` | 0.0 | Label smoothing ε (e.g. 0.05 helps generalisation) |
 | `--grad_clip` | 1.0 | Max gradient norm (0 = disabled) |
 | **Resume** | | |
-| `--resume` | auto | Path to `training_checkpoint.pth`; auto-detected if omitted |
+| `--augment` | off | Gaussian noise + feature masking on training sequences |
+| `--noise_std` | 0.02 | Std-dev of noise added per timestep during augmentation |
+| `--mask_prob` | 0.05 | Probability of masking an entire feature channel per sample |
+| `--scheduler` | `onecycle` | `onecycle` or `cosine_warm` (CosineAnnealingWarmRestarts) |
+| `--cosine_T0` | auto | First restart period for `cosine_warm` (default: `epochs // 3`) |
+| `--swa` | off | Stochastic Weight Averaging — averages weights in final phase |
+| `--swa_start` | 0.75 | Fraction of epochs after which SWA begins |
+| `--swa_lr` | auto | SWA learning rate (default: `learning_rate × 0.05`) |
+
+### Recommended accuracy configuration
+
+```bash
+# Maximum accuracy — all boosters enabled
+python train_stock_model.py \
+    --augment --noise_std 0.02 \
+    --scheduler cosine_warm \
+    --swa --swa_start 0.75 \
+    --focal_loss --grad_clip 1.0 \
+    --epochs 100 --patience 15 \
+    --hidden_dim 256 --num_layers 3
+```
 
 ---
 
