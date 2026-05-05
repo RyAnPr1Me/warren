@@ -33,6 +33,7 @@ import time
 import copy
 import logging
 import argparse
+import multiprocessing
 from datetime import datetime
 from pathlib import Path
 
@@ -170,6 +171,80 @@ def cprint(msg: str, style: str = "") -> None:
 # ══════════════════════════════════════════════════════════════════════════════
 # Utilities
 # ══════════════════════════════════════════════════════════════════════════════
+
+# ══════════════════════════════════════════════════════════════════════════════
+# System-aware hardware profile
+# ══════════════════════════════════════════════════════════════════════════════
+
+def get_system_profile() -> dict:
+    """Detect hardware capabilities and return auto-tuned training parameters.
+
+    Returns
+    -------
+    dict with keys:
+        device          – "cuda" or "cpu"
+        cpu_count       – logical CPU cores
+        num_workers     – recommended DataLoader workers
+        pin_memory      – True when a CUDA GPU is present
+        ram_gb          – total system RAM in GB (None if psutil unavailable)
+        vram_gb         – GPU VRAM in GB (None on CPU-only systems)
+        batch_size_hint – suggested batch size given available memory
+        hidden_dim_hint – suggested model hidden dimension
+    """
+    profile: dict = {}
+    cpu_count = multiprocessing.cpu_count()
+    profile["cpu_count"] = cpu_count
+    # Reserve one core for the main process; cap at 8 to avoid IPC overhead
+    profile["num_workers"] = min(8, max(0, cpu_count - 1))
+
+    # ── RAM ──────────────────────────────────────────────────────────────────
+    try:
+        import psutil
+        ram_gb = psutil.virtual_memory().total / 1e9
+        profile["ram_gb"] = round(ram_gb, 1)
+    except ImportError:
+        ram_gb = 8.0
+        profile["ram_gb"] = None
+
+    # ── GPU ──────────────────────────────────────────────────────────────────
+    if torch.cuda.is_available():
+        profile["device"] = "cuda"
+        profile["pin_memory"] = True
+        vram_gb = torch.cuda.get_device_properties(0).total_memory / 1e9
+        profile["vram_gb"] = round(vram_gb, 1)
+        if vram_gb >= 24:
+            profile["batch_size_hint"] = 512
+            profile["hidden_dim_hint"] = 512
+        elif vram_gb >= 16:
+            profile["batch_size_hint"] = 256
+            profile["hidden_dim_hint"] = 256
+        elif vram_gb >= 8:
+            profile["batch_size_hint"] = 128
+            profile["hidden_dim_hint"] = 256
+        elif vram_gb >= 4:
+            profile["batch_size_hint"] = 64
+            profile["hidden_dim_hint"] = 128
+        else:
+            profile["batch_size_hint"] = 32
+            profile["hidden_dim_hint"] = 128
+    else:
+        profile["device"] = "cpu"
+        profile["pin_memory"] = False
+        profile["vram_gb"] = None
+        # On CPU, keep workers moderate to avoid memory pressure
+        profile["num_workers"] = min(4, max(0, cpu_count - 1))
+        if ram_gb >= 32:
+            profile["batch_size_hint"] = 256
+            profile["hidden_dim_hint"] = 256
+        elif ram_gb >= 16:
+            profile["batch_size_hint"] = 128
+            profile["hidden_dim_hint"] = 128
+        else:
+            profile["batch_size_hint"] = 64
+            profile["hidden_dim_hint"] = 128
+
+    return profile
+
 
 def set_seed(seed: int = 42) -> None:
     np.random.seed(seed)
@@ -453,28 +528,33 @@ def build_model(model_type: str, input_dim: int, config: dict) -> nn.Module:
 
 def train_epoch(model: nn.Module, loader: DataLoader, optimizer: optim.Optimizer,
                 criterion, device: torch.device, scaler, scheduler=None,
-                multi_task: bool = False) -> float:
+                multi_task: bool = False, grad_clip: float = 0.0) -> float:
     """Run one training epoch; return average loss."""
     model.train()
     total_loss, n = 0.0, 0
     use_amp = device.type == "cuda"
     for x, y in loader:
-        x = x.to(device)
+        x = x.to(device, non_blocking=True)
         optimizer.zero_grad()
         with _autocast(device.type) if use_amp else _null_ctx():
             out = model(x)
             if multi_task:
-                y_dict = {k: v.to(device) for k, v in y.items()}
+                y_dict = {k: v.to(device, non_blocking=True) for k, v in y.items()}
                 loss = sum(criterion(out[k].view(-1), y_dict[k].view(-1))
                            for k in y_dict) / len(y_dict)
             else:
-                loss = criterion(out.view(-1), y.to(device).view(-1))
+                loss = criterion(out.view(-1), y.to(device, non_blocking=True).view(-1))
         if use_amp:
             scaler.scale(loss).backward()
+            if grad_clip > 0.0:
+                scaler.unscale_(optimizer)
+                nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
             scaler.step(optimizer)
             scaler.update()
         else:
             loss.backward()
+            if grad_clip > 0.0:
+                nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
             optimizer.step()
         if scheduler is not None:
             scheduler.step()
@@ -487,6 +567,32 @@ class _null_ctx:
     """Null context manager for non-AMP paths."""
     def __enter__(self):  return self
     def __exit__(self, *_): pass
+
+
+class FocalLoss(nn.Module):
+    """Focal loss for binary classification.
+
+    Downweights well-classified examples so the model focuses on hard
+    ones — particularly useful when the UP/DOWN class ratio is unbalanced.
+
+    Parameters
+    ----------
+    alpha : float
+        Weighting factor for the positive class (0.25 is a common default).
+    gamma : float
+        Focusing exponent; 0 recovers standard BCE, 2 is the original paper default.
+    """
+
+    def __init__(self, alpha: float = 0.25, gamma: float = 2.0):
+        super().__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+
+    def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        bce   = nn.functional.binary_cross_entropy_with_logits(logits, targets, reduction="none")
+        pt    = torch.exp(-bce)
+        focal = self.alpha * (1 - pt) ** self.gamma * bce
+        return focal.mean()
 
 
 def validate(model: nn.Module, loader: DataLoader, criterion,
@@ -534,8 +640,14 @@ def validate(model: nn.Module, loader: DataLoader, criterion,
 
 def prepare_data(X_train, X_test, y_train, y_test,
                  seq_length: int = 30, batch_size: int = 64,
-                 multi_task: bool = False, data: pd.DataFrame = None):
+                 multi_task: bool = False, data: pd.DataFrame = None,
+                 num_workers: int = 0, pin_memory: bool = False):
     """Build DataLoader objects for train and test splits."""
+    _ldr_kwargs = dict(
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+        persistent_workers=(num_workers > 0),
+    )
     if multi_task and data is not None:
         target_cols = {f"h{h}": f"Target_Direction_{h}d" for h in PREDICTION_HORIZONS}
         available = {k: v for k, v in target_cols.items() if v in data.columns}
@@ -547,14 +659,14 @@ def prepare_data(X_train, X_test, y_train, y_test,
             train_ds = MultiTaskStockDataset(X_train.values, tr_yd, seq_length)
             test_ds  = MultiTaskStockDataset(X_test.values,  te_yd, seq_length)
             return (
-                DataLoader(train_ds, batch_size=batch_size, shuffle=True,  num_workers=0),
-                DataLoader(test_ds,  batch_size=batch_size, shuffle=False, num_workers=0),
+                DataLoader(train_ds, batch_size=batch_size, shuffle=True,  **_ldr_kwargs),
+                DataLoader(test_ds,  batch_size=batch_size, shuffle=False, **_ldr_kwargs),
             )
     train_ds = StockDataset(X_train.values, y_train.values, seq_length)
     test_ds  = StockDataset(X_test.values,  y_test.values,  seq_length)
     return (
-        DataLoader(train_ds, batch_size=batch_size, shuffle=True,  num_workers=0),
-        DataLoader(test_ds,  batch_size=batch_size, shuffle=False, num_workers=0),
+        DataLoader(train_ds, batch_size=batch_size, shuffle=True,  **_ldr_kwargs),
+        DataLoader(test_ds,  batch_size=batch_size, shuffle=False, **_ldr_kwargs),
     )
 
 
@@ -638,7 +750,8 @@ def print_banner() -> None:
         print(f"Warren — Stock Price Prediction AI  v{VERSION}\n")
 
 
-def print_system_info(device: torch.device) -> None:
+def print_system_info(device: torch.device, sys_profile: dict = None) -> None:
+    sp = sys_profile or {}
     if RICH_AVAILABLE and console:
         table = Table(title="System Information", box=box.SIMPLE, header_style="bold cyan")
         table.add_column("Property", style="bold")
@@ -650,13 +763,25 @@ def print_system_info(device: torch.device) -> None:
             table.add_row("GPU Name",   torch.cuda.get_device_name(0))
             gb = torch.cuda.get_device_properties(0).total_memory / 1e9
             table.add_row("GPU Memory", f"{gb:.1f} GB")
+        table.add_row("CPU Cores",    str(sp.get("cpu_count", multiprocessing.cpu_count())))
+        if sp.get("ram_gb"):
+            table.add_row("System RAM",   f"{sp['ram_gb']} GB")
         table.add_row("Rich UI",      "✓ enabled" if RICH_AVAILABLE else "✗ disabled")
         table.add_row("Optuna",       "✓ available" if OPTUNA_AVAILABLE else "✗ not installed")
+        if sp:
+            table.add_row("[bold bright_blue]── Auto-tuned ──[/bold bright_blue]", "")
+            table.add_row("  Batch size hint",   str(sp.get("batch_size_hint", "—")))
+            table.add_row("  Hidden dim hint",   str(sp.get("hidden_dim_hint", "—")))
+            table.add_row("  DataLoader workers", str(sp.get("num_workers", 0)))
+            table.add_row("  Pin memory",         str(sp.get("pin_memory", False)))
         console.print(table)
     else:
         print(f"Device: {device}  |  PyTorch: {torch.__version__}")
         if device.type == "cuda":
             print(f"GPU: {torch.cuda.get_device_name(0)}")
+        if sp:
+            print(f"Auto-tuned: batch={sp.get('batch_size_hint')}  hidden={sp.get('hidden_dim_hint')}  "
+                  f"workers={sp.get('num_workers')}  pin_memory={sp.get('pin_memory')}")
 
 
 def print_config_table(config: dict) -> None:
@@ -946,16 +1071,20 @@ def walk_forward_cross_validate(data: pd.DataFrame, config: dict,
 # ══════════════════════════════════════════════════════════════════════════════
 
 def train_model(X_train, X_test, y_train, y_test, config: dict,
-                silent: bool = False, device: torch.device = None) -> dict:
+                silent: bool = False, device: torch.device = None,
+                resume_from: str = None, sys_profile: dict = None) -> dict:
     """Train the stock prediction model with a rich live terminal display.
 
     Parameters
     ----------
-    X_train, X_test : DataFrame  — feature matrices
-    y_train, y_test : Series     — target labels
-    config          : dict       — full configuration dict
-    silent          : bool       — suppress terminal output (for tuning/CV)
-    device          : torch.device or None (auto-detect)
+    X_train, X_test  : DataFrame  — feature matrices
+    y_train, y_test  : Series     — target labels
+    config           : dict       — full configuration dict
+    silent           : bool       — suppress terminal output (for tuning/CV)
+    device           : torch.device or None (auto-detect)
+    resume_from      : str or None — path to a training checkpoint (.pth) to
+                       continue training from; overrides ``start_epoch`` below.
+    sys_profile      : dict or None — hardware profile from get_system_profile()
 
     Returns
     -------
@@ -965,12 +1094,18 @@ def train_model(X_train, X_test, y_train, y_test, config: dict,
     if device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    sp = sys_profile or {}
+    num_workers = sp.get("num_workers", 0)
+    pin_memory  = sp.get("pin_memory", False)
+
     input_dim = X_train.shape[1]
     train_loader, test_loader = prepare_data(
         X_train, X_test, y_train, y_test,
         seq_length=config["seq_length"],
         batch_size=config["batch_size"],
         multi_task=config.get("multi_task", False),
+        num_workers=num_workers,
+        pin_memory=pin_memory,
     )
 
     model = build_model(config.get("model_type", "hybrid"), input_dim, config).to(device)
@@ -979,7 +1114,24 @@ def train_model(X_train, X_test, y_train, y_test, config: dict,
 
     is_reg     = config.get("is_regression", False)
     multi_task = config.get("multi_task", False)
-    criterion  = nn.MSELoss() if is_reg else nn.BCEWithLogitsLoss()
+    grad_clip  = float(config.get("grad_clip", 1.0))
+
+    # ── Loss function ─────────────────────────────────────────────────────────
+    if is_reg:
+        criterion = nn.MSELoss()
+    elif config.get("focal_loss", False):
+        criterion = FocalLoss(
+            alpha=float(config.get("focal_alpha", 0.25)),
+            gamma=float(config.get("focal_gamma", 2.0)),
+        )
+    else:
+        label_smoothing = float(config.get("label_smoothing", 0.0))
+        if label_smoothing > 0.0:
+            # Approximate label smoothing for BCEWithLogitsLoss via target clipping
+            criterion = _LabelSmoothBCE(label_smoothing)
+        else:
+            criterion = nn.BCEWithLogitsLoss()
+
     optimizer  = optim.AdamW(model.parameters(),
                               lr=config["learning_rate"],
                               weight_decay=config.get("weight_decay", 1e-5))
@@ -994,11 +1146,52 @@ def train_model(X_train, X_test, y_train, y_test, config: dict,
     best_epoch       = 0
     patience_counter = 0
     best_model_state = None
+    start_epoch      = 0
     os.makedirs(config["model_dir"], exist_ok=True)
-    best_model_path  = os.path.join(config["model_dir"], "best_model.pth")
-    patience         = config.get("patience", 10)
-    epochs           = config["epochs"]
-    start_time       = time.time()
+    best_model_path    = os.path.join(config["model_dir"], "best_model.pth")
+    resume_ckpt_path   = os.path.join(config["model_dir"], "training_checkpoint.pth")
+    patience           = config.get("patience", 10)
+    epochs             = config["epochs"]
+
+    # ── Auto-detect interrupted run ───────────────────────────────────────────
+    if resume_from is None and os.path.exists(resume_ckpt_path):
+        resume_from = resume_ckpt_path
+        if not silent:
+            cprint(
+                f"[yellow]⚡ Interrupted checkpoint detected at {resume_ckpt_path!r} "
+                f"— resuming automatically.[/yellow]"
+            )
+
+    # ── Load checkpoint for resume ────────────────────────────────────────────
+    if resume_from and os.path.exists(resume_from):
+        try:
+            ckpt = torch.load(resume_from, map_location=device)
+            model.load_state_dict(ckpt["model_state_dict"])
+            optimizer.load_state_dict(ckpt["optimizer_state_dict"])
+            if "scheduler_state_dict" in ckpt:
+                scheduler.load_state_dict(ckpt["scheduler_state_dict"])
+            if "scaler_state_dict" in ckpt:
+                try:
+                    scaler.load_state_dict(ckpt["scaler_state_dict"])
+                except Exception:
+                    pass
+            start_epoch      = ckpt.get("epoch", 0) + 1
+            history          = ckpt.get("history", history)
+            best_val_metric  = ckpt.get("best_val_metric", best_val_metric)
+            best_epoch       = ckpt.get("best_epoch", 0)
+            patience_counter = ckpt.get("patience_counter", 0)
+            if not silent:
+                cprint(
+                    f"[green]✓ Resumed from {resume_from!r}  "
+                    f"(epoch {start_epoch}/{epochs})[/green]"
+                )
+            logger.info(f"Resumed training from {resume_from!r} at epoch {start_epoch}")
+        except Exception as exc:
+            logger.warning(f"Could not load checkpoint {resume_from!r}: {exc}")
+            if not silent:
+                cprint(f"[red]Warning: could not load checkpoint ({exc}), starting fresh.[/red]")
+
+    start_time = time.time()
 
     # ── Progress bar columns ──────────────────────────────────────────────────
     progress_cols = [
@@ -1012,13 +1205,36 @@ def train_model(X_train, X_test, y_train, y_test, config: dict,
         TimeRemainingColumn(),
     ]
 
-    def _run_training_loop(progress=None, epoch_task=None):
+    def _save_full_checkpoint(epoch: int) -> None:
+        """Persist full training state so a run can be resumed later."""
+        try:
+            ckpt_data = {
+                "epoch":                 epoch,
+                "model_state_dict":      model.state_dict(),
+                "optimizer_state_dict":  optimizer.state_dict(),
+                "scheduler_state_dict":  scheduler.state_dict(),
+                "history":               history,
+                "best_val_metric":       best_val_metric,
+                "best_epoch":            best_epoch,
+                "patience_counter":      patience_counter,
+                "config":                config,
+            }
+            try:
+                ckpt_data["scaler_state_dict"] = scaler.state_dict()
+            except Exception:
+                pass
+            torch.save(ckpt_data, resume_ckpt_path)
+        except Exception as exc:
+            logger.warning(f"Could not save training checkpoint: {exc}")
+
+    def _run_training_loop(progress=None, epoch_task=None, live=None):
         nonlocal best_val_metric, best_epoch, patience_counter, best_model_state
-        for epoch in range(epochs):
+        for epoch in range(start_epoch, epochs):
             ep_start = time.time()
             train_loss = train_epoch(
                 model, train_loader, optimizer, criterion,
                 device, scaler, scheduler, multi_task=multi_task,
+                grad_clip=grad_clip,
             )
             val_metrics = validate(
                 model, test_loader, criterion, device,
@@ -1036,8 +1252,7 @@ def train_model(X_train, X_test, y_train, y_test, config: dict,
                 f"{val_metrics.get('rmse' if is_reg else 'f1', 0):.4f} "
                 f"t={ep_time:.1f}s"
             )
-            # Best model tracking
-            monitor = val_metrics.get("rmse" if is_reg else "f1", 0.0)
+            monitor  = val_metrics.get("rmse" if is_reg else "f1", 0.0)
             improved = (monitor < best_val_metric) if is_reg else (monitor > best_val_metric)
             if improved:
                 best_val_metric  = monitor
@@ -1045,25 +1260,43 @@ def train_model(X_train, X_test, y_train, y_test, config: dict,
                 patience_counter = 0
                 best_model_state = copy.deepcopy(model.state_dict())
                 torch.save({
-                    "epoch": epoch, "model_state_dict": model.state_dict(),
+                    "epoch":                epoch,
+                    "model_state_dict":     model.state_dict(),
                     "optimizer_state_dict": optimizer.state_dict(),
-                    "val_metrics": val_metrics, "config": config,
+                    "scheduler_state_dict": scheduler.state_dict(),
+                    "val_metrics":          val_metrics,
+                    "config":               config,
                 }, best_model_path)
             else:
                 patience_counter += 1
 
+            # Periodic full checkpoint (every 5 epochs) for crash recovery
+            if (epoch + 1) % 5 == 0 or patience_counter >= patience:
+                _save_full_checkpoint(epoch)
+
             if progress and epoch_task is not None:
                 m_key = "rmse" if is_reg else "f1"
                 mv    = val_metrics.get(m_key, 0)
-                desc  = (
-                    f"[cyan]Epoch {epoch+1}/{epochs}  "
-                    f"loss={train_loss:.4f}  "
-                    f"{m_key.upper()}={mv:.4f}  "
-                    f"{'⭐' if improved else '  '}"
+                progress.update(
+                    epoch_task, advance=1,
+                    description=(
+                        f"[cyan]Epoch {epoch+1}/{epochs}  "
+                        f"loss={train_loss:.4f}  "
+                        f"{m_key.upper()}={mv:.4f}  "
+                        f"{'⭐' if improved else '  '}"
+                    ),
                 )
-                progress.update(epoch_task, advance=1, description=desc)
+            if live is not None:
+                live.update(
+                    _build_epoch_table(history, best_epoch, patience, patience_counter, config)
+                )
 
             if patience_counter >= patience:
+                if progress and epoch_task is not None:
+                    progress.update(
+                        epoch_task,
+                        description=f"[yellow]Early stopping at epoch {epoch+1}",
+                    )
                 logger.info(f"Early stopping at epoch {epoch + 1}.")
                 break
 
@@ -1071,70 +1304,14 @@ def train_model(X_train, X_test, y_train, y_test, config: dict,
     if not silent and RICH_AVAILABLE and console:
         with Progress(*progress_cols, console=console, refresh_per_second=4) as prog:
             epoch_task = prog.add_task(
-                f"[cyan]Epoch 1/{epochs}", total=epochs
+                f"[cyan]Epoch {start_epoch+1}/{epochs}", total=epochs,
+                completed=start_epoch,
             )
             with Live(
                 _build_epoch_table(history, best_epoch, patience, patience_counter, config),
                 console=console, refresh_per_second=1, vertical_overflow="visible",
             ) as live:
-                # Patch loop to update Live display each epoch
-                _orig = train_epoch.__wrapped__ if hasattr(train_epoch, "__wrapped__") else None
-
-                for epoch in range(epochs):
-                    ep_start = time.time()
-                    train_loss = train_epoch(
-                        model, train_loader, optimizer, criterion,
-                        device, scaler, scheduler, multi_task=multi_task,
-                    )
-                    val_metrics = validate(
-                        model, test_loader, criterion, device,
-                        is_regression=is_reg, multi_task=multi_task,
-                    )
-                    ep_time = time.time() - ep_start
-                    history["train_loss"].append(train_loss)
-                    history["val_loss"].append(val_metrics["val_loss"])
-                    history["metrics"].append(val_metrics)
-                    history["epoch_times"].append(ep_time)
-                    logger.info(
-                        f"Epoch {epoch+1}/{epochs} | TrLoss={train_loss:.4f} "
-                        f"ValLoss={val_metrics['val_loss']:.4f} "
-                        f"{'RMSE' if is_reg else 'F1'}="
-                        f"{val_metrics.get('rmse' if is_reg else 'f1', 0):.4f} "
-                        f"t={ep_time:.1f}s"
-                    )
-                    monitor  = val_metrics.get("rmse" if is_reg else "f1", 0.0)
-                    improved = (monitor < best_val_metric) if is_reg else (monitor > best_val_metric)
-                    if improved:
-                        best_val_metric  = monitor
-                        best_epoch       = epoch
-                        patience_counter = 0
-                        best_model_state = copy.deepcopy(model.state_dict())
-                        torch.save({
-                            "epoch": epoch, "model_state_dict": model.state_dict(),
-                            "optimizer_state_dict": optimizer.state_dict(),
-                            "val_metrics": val_metrics, "config": config,
-                        }, best_model_path)
-                    else:
-                        patience_counter += 1
-
-                    m_key = "rmse" if is_reg else "f1"
-                    mv    = val_metrics.get(m_key, 0)
-                    prog.update(
-                        epoch_task, advance=1,
-                        description=(
-                            f"[cyan]Epoch {epoch+1}/{epochs}  "
-                            f"loss={train_loss:.4f}  "
-                            f"{m_key.upper()}={mv:.4f}  "
-                            f"{'⭐ best' if improved else ''}"
-                        ),
-                    )
-                    live.update(
-                        _build_epoch_table(history, best_epoch, patience, patience_counter, config)
-                    )
-                    if patience_counter >= patience:
-                        prog.update(epoch_task, description=f"[yellow]Early stopping at epoch {epoch+1}")
-                        logger.info(f"Early stopping at epoch {epoch + 1}.")
-                        break
+                _run_training_loop(progress=prog, epoch_task=epoch_task, live=live)
     else:
         _run_training_loop()
 
@@ -1144,11 +1321,38 @@ def train_model(X_train, X_test, y_train, y_test, config: dict,
         model.load_state_dict(best_model_state)
     final_metrics = validate(model, test_loader, criterion, device,
                              is_regression=is_reg, multi_task=multi_task)
+
+    # Remove the transient training checkpoint now that training finished cleanly
+    try:
+        if os.path.exists(resume_ckpt_path):
+            os.remove(resume_ckpt_path)
+    except Exception:
+        pass
+
     return {
         "model": model, "history": history, "config": config,
         "final_metrics": final_metrics, "best_epoch": best_epoch,
         "training_time": total_time,
     }
+
+
+class _LabelSmoothBCE(nn.Module):
+    """Binary cross-entropy with label smoothing.
+
+    Targets are softened from {0, 1} to {ε/2, 1-ε/2} before computing
+    BCEWithLogitsLoss, which reduces overconfidence and acts as a light
+    regulariser.
+    """
+
+    def __init__(self, smoothing: float = 0.1):
+        super().__init__()
+        self.smoothing = smoothing
+        self._bce = nn.BCEWithLogitsLoss()
+
+    def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        smooth = self.smoothing
+        targets_s = targets * (1.0 - smooth) + 0.5 * smooth
+        return self._bce(logits, targets_s)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1215,11 +1419,12 @@ def visualize_results(results: dict, save_dir: str = None) -> None:
 # ══════════════════════════════════════════════════════════════════════════════
 
 def main(args) -> dict:
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    sys_profile = get_system_profile()
+    device = torch.device(sys_profile["device"])
 
     if not args.silent:
         print_banner()
-        print_system_info(device)
+        print_system_info(device, sys_profile)
 
     # ── Load JSON config (may be overridden by explicit CLI flags) ────────────
     json_cfg: dict = {}
@@ -1282,27 +1487,38 @@ def main(args) -> dict:
         if cli is not None:
             return cli
         return wizard_cfg.get(wizard_k, json_cfg.get(json_k, default))
+
+    # Apply system-profile hints as fallback defaults (CLI still wins)
+    _sp_batch  = sys_profile.get("batch_size_hint", 64)
+    _sp_hidden = sys_profile.get("hidden_dim_hint", 128)
+
     config = {
-        "seed":           int(args.seed),
-        "batch_size":     int(_iv(args.batch_size,    "batch_size",    "batch_size",    64)),
-        "epochs":         int(_iv(args.epochs,         "epochs",        "epochs",        50)),
-        "learning_rate":  float(_iv(args.learning_rate, "learning_rate", "learning_rate", 0.001)),
-        "weight_decay":   float(_iv(args.weight_decay,  "weight_decay",  "weight_decay",  1e-5)),
-        "hidden_dim":     int(_iv(args.hidden_dim,    "hidden_dim",    "hidden_dim",    128)),
-        "num_layers":     int(_iv(args.num_layers,    "num_layers",    "num_layers",    2)),
-        "num_heads":      int(_iv(args.num_heads,     "num_heads",     "num_heads",     4)),
-        "dropout":        float(_iv(args.dropout,     "dropout",       "dropout",       0.2)),
-        "bidirectional":  bool(json_cfg.get("bidirectional", True)),
-        "seq_length":     int(_iv(args.seq_length,    "seq_length",    "seq_length",    30)),
-        "patience":       int(_iv(args.patience,      "patience",      "patience",      10)),
-        "is_regression":  bool(args.is_regression),
-        "model_dir":      str(_iv(args.model_dir,     "model_dir",     "model_dir",     "models")),
-        "model_type":     str(wizard_cfg.get("model_type") or getattr(args, "model_type", "hybrid")),
-        "multi_task":     bool(wizard_cfg.get("multi_task") or getattr(args, "multi_task", False)),
-        "walk_forward":   bool(wizard_cfg.get("walk_forward") or getattr(args, "walk_forward", False)),
-        "n_splits":       int(wizard_cfg.get("n_splits") or getattr(args, "n_splits", 5)),
-        "save_results":   bool(wizard_cfg.get("save_results", args.save_results)),
-        "visualize":      bool(wizard_cfg.get("visualize",    args.visualize)),
+        "seed":             int(args.seed),
+        "batch_size":       int(_iv(args.batch_size,    "batch_size",    "batch_size",    _sp_batch)),
+        "epochs":           int(_iv(args.epochs,         "epochs",        "epochs",        50)),
+        "learning_rate":    float(_iv(args.learning_rate, "learning_rate", "learning_rate", 0.001)),
+        "weight_decay":     float(_iv(args.weight_decay,  "weight_decay",  "weight_decay",  1e-5)),
+        "hidden_dim":       int(_iv(args.hidden_dim,    "hidden_dim",    "hidden_dim",    _sp_hidden)),
+        "num_layers":       int(_iv(args.num_layers,    "num_layers",    "num_layers",    2)),
+        "num_heads":        int(_iv(args.num_heads,     "num_heads",     "num_heads",     4)),
+        "dropout":          float(_iv(args.dropout,     "dropout",       "dropout",       0.2)),
+        "bidirectional":    bool(json_cfg.get("bidirectional", True)),
+        "seq_length":       int(_iv(args.seq_length,    "seq_length",    "seq_length",    30)),
+        "patience":         int(_iv(args.patience,      "patience",      "patience",      10)),
+        "is_regression":    bool(args.is_regression),
+        "model_dir":        str(_iv(args.model_dir,     "model_dir",     "model_dir",     "models")),
+        "model_type":       str(wizard_cfg.get("model_type") or getattr(args, "model_type", "hybrid")),
+        "multi_task":       bool(wizard_cfg.get("multi_task") or getattr(args, "multi_task", False)),
+        "walk_forward":     bool(wizard_cfg.get("walk_forward") or getattr(args, "walk_forward", False)),
+        "n_splits":         int(wizard_cfg.get("n_splits") or getattr(args, "n_splits", 5)),
+        "save_results":     bool(wizard_cfg.get("save_results", args.save_results)),
+        "visualize":        bool(wizard_cfg.get("visualize",    args.visualize)),
+        # ── New performance / accuracy options ─────────────────────────────
+        "grad_clip":        float(getattr(args, "grad_clip",        1.0)),
+        "focal_loss":       bool(getattr(args, "focal_loss",        False)),
+        "focal_alpha":      float(getattr(args, "focal_alpha",      0.25)),
+        "focal_gamma":      float(getattr(args, "focal_gamma",      2.0)),
+        "label_smoothing":  float(getattr(args, "label_smoothing",  0.0)),
     }
 
     if not args.silent:
@@ -1339,8 +1555,12 @@ def main(args) -> dict:
     # ── Standard train ─────────────────────────────────────────────────────────
     if not args.silent:
         cprint("\n[bold cyan]Starting training…[/bold cyan]\n")
-    results = train_model(X_train, X_test, y_train, y_test, config,
-                           silent=args.silent, device=device)
+    results = train_model(
+        X_train, X_test, y_train, y_test, config,
+        silent=args.silent, device=device,
+        resume_from=getattr(args, "resume", None),
+        sys_profile=sys_profile,
+    )
 
     # ── Feature importance ─────────────────────────────────────────────────────
     if not args.silent:
@@ -1404,6 +1624,8 @@ if __name__ == "__main__":
             "  python train_stock_model.py --walk_forward --n_splits 5\n"
             "  python train_stock_model.py --model_type tft --multi_task --epochs 80\n"
             "  python train_stock_model.py --use_extended_symbols --save_results --visualize\n"
+            "  python train_stock_model.py --resume models/training_checkpoint.pth\n"
+            "  python train_stock_model.py --focal_loss --grad_clip 1.0\n"
         ),
     )
 
@@ -1434,26 +1656,46 @@ if __name__ == "__main__":
                     help="Fetch and include fundamental data (P/E, beta, etc.)")
 
     # ── Model ─────────────────────────────────────────────────────────────────
-    ap.add_argument("--model_type",   type=str,   default="hybrid",
+    ap.add_argument("--model_type",   type=str,   default=None,
                     choices=["hybrid", "tft"],
                     help="Model architecture: hybrid (LSTM+Attn+TCN) or tft")
-    ap.add_argument("--hidden_dim",   type=int,   default=128)
-    ap.add_argument("--num_layers",   type=int,   default=2)
-    ap.add_argument("--num_heads",    type=int,   default=4)
-    ap.add_argument("--dropout",      type=float, default=0.2)
-    ap.add_argument("--seq_length",   type=int,   default=30)
+    ap.add_argument("--hidden_dim",   type=int,   default=None,
+                    help="Model hidden dimension (auto-tuned from GPU VRAM if omitted)")
+    ap.add_argument("--num_layers",   type=int,   default=None)
+    ap.add_argument("--num_heads",    type=int,   default=None)
+    ap.add_argument("--dropout",      type=float, default=None)
+    ap.add_argument("--seq_length",   type=int,   default=None)
     ap.add_argument("--is_regression",action="store_true",
                     help="Regression (predict return) instead of classification")
     ap.add_argument("--multi_task",   action="store_true",
                     help="Multi-task learning across all forecast horizons")
 
     # ── Training ──────────────────────────────────────────────────────────────
-    ap.add_argument("--batch_size",    type=int,   default=64)
-    ap.add_argument("--epochs",        type=int,   default=50)
-    ap.add_argument("--learning_rate", type=float, default=0.001)
-    ap.add_argument("--weight_decay",  type=float, default=1e-5)
-    ap.add_argument("--patience",      type=int,   default=10)
+    ap.add_argument("--batch_size",    type=int,   default=None,
+                    help="Batch size (auto-tuned from available memory if omitted)")
+    ap.add_argument("--epochs",        type=int,   default=None)
+    ap.add_argument("--learning_rate", type=float, default=None)
+    ap.add_argument("--weight_decay",  type=float, default=None)
+    ap.add_argument("--patience",      type=int,   default=None)
     ap.add_argument("--seed",          type=int,   default=42)
+
+    # ── Resume / checkpoint ───────────────────────────────────────────────────
+    ap.add_argument("--resume", type=str, default=None, metavar="CHECKPOINT",
+                    help="Path to a training_checkpoint.pth to resume from. "
+                         "If omitted and a checkpoint exists in --model_dir, "
+                         "it is loaded automatically.")
+
+    # ── Optimisation ─────────────────────────────────────────────────────────
+    ap.add_argument("--grad_clip",       type=float, default=1.0,
+                    help="Max gradient norm for clipping (0 = disabled, default: 1.0)")
+    ap.add_argument("--focal_loss",      action="store_true",
+                    help="Use Focal Loss instead of BCE (helps with class imbalance)")
+    ap.add_argument("--focal_alpha",     type=float, default=0.25,
+                    help="Focal Loss alpha (positive-class weight, default: 0.25)")
+    ap.add_argument("--focal_gamma",     type=float, default=2.0,
+                    help="Focal Loss gamma focusing exponent (default: 2.0)")
+    ap.add_argument("--label_smoothing", type=float, default=0.0,
+                    help="Label smoothing ε for BCE loss (0 = disabled, e.g. 0.05)")
 
     # ── Walk-forward CV ───────────────────────────────────────────────────────
     ap.add_argument("--walk_forward", action="store_true",

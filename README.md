@@ -11,7 +11,8 @@ Warren combines a **180+ feature engineering engine**, a **hybrid deep-learning 
 |---|---|
 | **Data Engine** | 180+ TA indicators • Parallel download • Disk caching • Multi-timeframe • Market context (SPY/VIX/Sector ETFs) • Fundamental data • Multi-horizon targets |
 | **Models** | Hybrid BiLSTM + Multi-Head Attention + TCN (3 dilated layers) • Temporal Fusion Transformer (TFT) variant • Multi-task learning across 1/5/10/21-day horizons |
-| **Training** | AMP mixed-precision • OneCycleLR + warm-up • Early stopping • Walk-forward cross-validation • Optuna hyperparameter search |
+| **Training** | AMP mixed-precision • Gradient clipping • OneCycleLR + warm-up • Focal Loss & label smoothing • Early stopping • Auto-resume from checkpoint • Walk-forward cross-validation • Optuna hyperparameter search |
+| **System-aware** | Auto-detects CPU cores, RAM, GPU VRAM → tunes `batch_size`, `hidden_dim`, `num_workers`, `pin_memory` automatically |
 | **Terminal UI** | Rich live epoch table • Progress bars • Interactive wizard • Coloured metrics • Feature importance bar chart |
 | **Inference** | `predict.py` — one command real-time predictions with confidence bars |
 
@@ -83,6 +84,17 @@ python train_stock_model.py --is_regression --hidden_dim 256 --num_layers 3
 python train_stock_model.py --symbols AAPL,MSFT,NVDA,TSLA,META \
     --hidden_dim 256 --num_heads 8 --dropout 0.15 \
     --batch_size 128 --epochs 100 --patience 15
+
+# Focal loss + gradient clipping for better accuracy
+python train_stock_model.py --focal_loss --grad_clip 1.0
+
+# Label smoothing (helps generalisation)
+python train_stock_model.py --label_smoothing 0.05
+
+# Resume an interrupted training run
+python train_stock_model.py --resume models/training_checkpoint.pth
+# (or simply re-run — Warren auto-detects the checkpoint)
+python train_stock_model.py --model_dir models
 ```
 
 ### Key CLI Flags
@@ -101,6 +113,14 @@ python train_stock_model.py --symbols AAPL,MSFT,NVDA,TSLA,META \
 | `--n_jobs` | 4 | Parallel download workers |
 | `--include_fundamentals` | off | Fetch P/E, beta, market cap, etc. |
 | `--silent` | off | Suppress rich terminal UI (for scripts) |
+| **Accuracy** | | |
+| `--focal_loss` | off | Focal Loss instead of BCE (better for imbalanced targets) |
+| `--focal_alpha` | 0.25 | Focal Loss positive-class weight |
+| `--focal_gamma` | 2.0 | Focal Loss focusing exponent |
+| `--label_smoothing` | 0.0 | Label smoothing ε (e.g. 0.05 helps generalisation) |
+| `--grad_clip` | 1.0 | Max gradient norm (0 = disabled) |
+| **Resume** | | |
+| `--resume` | auto | Path to `training_checkpoint.pth`; auto-detected if omitted |
 
 ---
 
