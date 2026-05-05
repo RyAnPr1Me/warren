@@ -1,19 +1,17 @@
 """
-Advanced Stock Price Prediction Model Trainer
+Advanced Stock Price Prediction Model Trainer (v2)
 
-This script implements temperature-aware training with GPU acceleration and mixed precision
-for stock prediction models. It uses a hybrid architecture combining LSTM, Transformer, and
-TCN components for optimal performance on time series financial data.
-
-Features:
-- Mixed precision training for faster computation
-- Learning rate scheduling with warmup
-- Temperature scaling for calibrated predictions
-- Automatic GPU/CPU detection and optimization
-- Multi-head attention for capturing complex temporal dependencies
-- Feature importance analysis
-- Early stopping with model checkpointing
-- Performance metrics visualization
+Hybrid LSTM+Transformer+TCN architecture with:
+  • GPU-accelerated mixed-precision training (AMP)
+  • Temperature-scaled calibration for probability outputs
+  • Walk-forward time-series cross-validation
+  • Multi-task learning: simultaneous prediction of 1/5/10/21-day horizons
+  • Temporal Fusion Transformer (TFT) architecture variant
+  • Optuna hyperparameter optimisation (--tune flag)
+  • Gradient-saliency feature importance
+  • JSON config file loading (--config flag)
+  • OneCycleLR scheduler with warm-up
+  • Early stopping and model checkpointing
 """
 
 import os
@@ -27,6 +25,7 @@ import argparse
 import json
 from pathlib import Path
 import time
+import copy
 
 # Extended symbols list
 SYMBOLS_EXTENDED = [
