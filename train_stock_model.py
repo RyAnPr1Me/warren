@@ -109,6 +109,7 @@ from sklearn.model_selection import train_test_split
 from stock_data_generator import (
     get_feature_engineered_stock_data,
     normalize_features,
+    normalize_train_test_features,
     split_train_test,
     walk_forward_splits,
     PREDICTION_HORIZONS,
@@ -1099,7 +1100,7 @@ def tune_hyperparameters(X_train, X_test, y_train, y_test,
             res = train_model(X_train, X_test, y_train, y_test, cfg,
                               silent=True, device=device)
             m = res["final_metrics"]
-            return m.get("rmse", 1.0) if cfg["is_regression"] else -m.get("f1", 0.0)
+            return m.get("rmse", 1.0) if cfg["is_regression"] else -m.get("roc_auc", 0.0)
         except Exception:
             return 1e6
 
@@ -1139,13 +1140,15 @@ def walk_forward_cross_validate(data: pd.DataFrame, config: dict,
     for fold_idx, (Xtr, Xte, ytr, yte) in enumerate(splits):
         cprint(f"\n[bold]Fold {fold_idx + 1}/{len(splits)}[/bold]  "
                f"train={len(Xtr):,}  test={len(Xte):,}", "cyan")
+        # Fit scaler on this fold's training data only to prevent leakage.
+        Xtr, Xte = normalize_train_test_features(Xtr, Xte, scaler_type="robust")
         results = train_model(Xtr, Xte, ytr, yte, config, silent=False, device=device)
         fold_results.append(results["final_metrics"])
 
     # Summary table
     if RICH_AVAILABLE and console and fold_results:
         is_reg = config.get("is_regression", False)
-        metric = "rmse" if is_reg else "f1"
+        metric = "rmse" if is_reg else "roc_auc"
         vals   = [r.get(metric, 0) for r in fold_results]
         table  = Table(title="Walk-Forward CV Summary", box=box.SIMPLE_HEAVY,
                        header_style="bold cyan")
@@ -1408,12 +1411,12 @@ def train_model(X_train, X_test, y_train, y_test, config: dict,
             logger.info(
                 f"Epoch {epoch+1}/{epochs} | TrLoss={train_loss:.4f} "
                 f"ValLoss={val_metrics['val_loss']:.4f} "
-                f"{'RMSE' if is_reg else 'F1'}="
-                f"{val_metrics.get('rmse' if is_reg else 'f1', 0):.4f} "
+                f"{'RMSE' if is_reg else 'AUC'}="
+                f"{val_metrics.get('rmse' if is_reg else 'roc_auc', 0):.4f} "
                 f"t={ep_time:.1f}s"
                 + (" [SWA]" if use_swa and epoch >= swa_start_epoch else "")
             )
-            monitor  = val_metrics.get("rmse" if is_reg else "f1", 0.0)
+            monitor  = val_metrics.get("rmse" if is_reg else "roc_auc", 0.0)
             improved = (monitor < best_val_metric) if is_reg else (monitor > best_val_metric)
             if improved:
                 best_val_metric  = monitor
@@ -1436,7 +1439,8 @@ def train_model(X_train, X_test, y_train, y_test, config: dict,
                 _save_full_checkpoint(epoch)
 
             if progress and epoch_task is not None:
-                m_key = "rmse" if is_reg else "f1"
+                m_key     = "rmse" if is_reg else "roc_auc"
+                m_display = "RMSE" if is_reg else "AUC"
                 mv    = val_metrics.get(m_key, 0)
                 swa_tag = " 🔀SWA" if use_swa and epoch >= swa_start_epoch else ""
                 progress.update(
@@ -1444,7 +1448,7 @@ def train_model(X_train, X_test, y_train, y_test, config: dict,
                     description=(
                         f"[cyan]Epoch {epoch+1}/{epochs}  "
                         f"loss={train_loss:.4f}  "
-                        f"{m_key.upper()}={mv:.4f}  "
+                        f"{m_display}={mv:.4f}  "
                         f"{'⭐' if improved else '  '}{swa_tag}"
                     ),
                 )
@@ -1553,11 +1557,12 @@ def visualize_results(results: dict, save_dir: str = None) -> None:
     axes[0].axvline(best_ep, color="gold", linestyle="--", alpha=0.6, label=f"Best Epoch ({best_ep+1})")
     axes[0].set_title("Loss Curves"); axes[0].set_xlabel("Epoch"); axes[0].legend()
 
-    m_key = "rmse" if is_reg else "f1"
+    m_key     = "rmse"  if is_reg else "roc_auc"
+    m_display = "RMSE"  if is_reg else "AUC"
     mv    = [m.get(m_key, 0) for m in history["metrics"]]
-    axes[1].plot(mv, color="#81C784", label=m_key.upper())
+    axes[1].plot(mv, color="#81C784", label=m_display)
     axes[1].axvline(best_ep, color="gold", linestyle="--", alpha=0.6)
-    axes[1].set_title(f"Validation {m_key.upper()}")
+    axes[1].set_title(f"Validation {m_display}")
     axes[1].set_xlabel("Epoch"); axes[1].legend()
     plt.tight_layout()
     if save_dir:
@@ -1718,12 +1723,13 @@ def main(args) -> dict:
         print_config_table(config)
 
     # ── Normalise + split ──────────────────────────────────────────────────────
+    # Split first so the scaler is fit only on training data (no leakage).
     if not args.silent:
-        cprint("[cyan]Normalising features…[/cyan]")
-    normalized_data = normalize_features(data, scaler_type="robust")
+        cprint("[cyan]Splitting and normalising features…[/cyan]")
     X_train, X_test, y_train, y_test = split_train_test(
-        normalized_data, test_size=args.test_size, time_based=True
+        data, test_size=args.test_size, time_based=True
     )
+    X_train, X_test = normalize_train_test_features(X_train, X_test, scaler_type="robust")
     if not args.silent:
         cprint(f"  Train: [bold]{len(X_train):,}[/bold]  Test: [bold]{len(X_test):,}[/bold]  "
                f"Features: [bold]{X_train.shape[1]}[/bold]")
@@ -1740,7 +1746,7 @@ def main(args) -> dict:
     # ── Walk-forward CV ────────────────────────────────────────────────────────
     if config["walk_forward"]:
         return walk_forward_cross_validate(
-            normalized_data, config,
+            data, config,
             n_splits=config["n_splits"],
             test_size=args.test_size,
         )
