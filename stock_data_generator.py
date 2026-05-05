@@ -249,7 +249,7 @@ def _compute_ichimoku(df: pd.DataFrame) -> pd.DataFrame:
     kijun  = (high.rolling(26).max() + low.rolling(26).min()) / 2
     span_a = ((tenkan + kijun) / 2).shift(26)
     span_b = ((high.rolling(52).max() + low.rolling(52).min()) / 2).shift(26)
-    chikou = close.shift(-26)
+    chikou = close.shift(26)   # 26 periods in the past (look-back, not look-ahead)
     df["Ichimoku_Tenkan"]  = tenkan
     df["Ichimoku_Kijun"]   = kijun
     df["Ichimoku_SpanA"]   = span_a
@@ -944,6 +944,49 @@ def normalize_features(
     nan_fill = 0.0 if scaler_type == "robust" else 0.5
     normalized[numeric_cols] = normalized[numeric_cols].fillna(nan_fill)
     return normalized
+
+
+def normalize_train_test_features(
+    X_train: pd.DataFrame,
+    X_test: pd.DataFrame,
+    scaler_type: str = "robust",
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Fit a scaler on the training set only, then transform both sets.
+
+    This prevents data leakage: test-set statistics never influence the scaler
+    used to normalize the training data.
+
+    Parameters
+    ----------
+    X_train, X_test : DataFrame
+        Feature matrices returned by :func:`split_train_test` or
+        :func:`walk_forward_splits`.
+    scaler_type : {"robust", "minmax"}
+        Scaling method.
+    """
+    scaler = RobustScaler() if scaler_type == "robust" else MinMaxScaler()
+    nan_fill = 0.0 if scaler_type == "robust" else 0.5
+
+    numeric_cols = X_train.select_dtypes(include=[np.number]).columns.tolist()
+
+    train_to_scale = X_train[numeric_cols].replace([np.inf, -np.inf], np.nan)
+    scaler.fit(train_to_scale)
+
+    X_train_norm = X_train.copy()
+    X_test_norm  = X_test.copy()
+
+    X_train_norm[numeric_cols] = pd.DataFrame(
+        scaler.transform(train_to_scale),
+        columns=numeric_cols, index=X_train.index,
+    ).fillna(nan_fill)
+
+    test_to_scale = X_test[numeric_cols].replace([np.inf, -np.inf], np.nan)
+    X_test_norm[numeric_cols] = pd.DataFrame(
+        scaler.transform(test_to_scale),
+        columns=numeric_cols, index=X_test.index,
+    ).fillna(nan_fill)
+
+    return X_train_norm, X_test_norm
 
 
 def split_train_test(
