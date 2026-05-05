@@ -378,8 +378,9 @@ class SinusoidalPositionalEncoding(nn.Module):
         i   = torch.arange(0, d_model, 2, dtype=torch.float32)
         div = torch.exp(i * (-math.log(10_000.0) / d_model))
         pe[:, 0::2] = torch.sin(pos * div)
-        # Handle odd d_model
-        pe[:, 1::2] = torch.cos(pos * div[:pe[:, 1::2].shape[1]])
+        # For odd d_model, div has one more element than pe[:, 1::2] columns; slice to match
+        n_cos = pe[:, 1::2].shape[1]   # = d_model // 2
+        pe[:, 1::2] = torch.cos(pos * div[:n_cos])
         self.register_buffer("pe", pe.unsqueeze(0))  # (1, max_len, d_model)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:

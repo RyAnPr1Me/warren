@@ -119,7 +119,7 @@ python train_stock_model.py --model_dir models
 | `--focal_gamma` | 2.0 | Focal Loss focusing exponent |
 | `--label_smoothing` | 0.0 | Label smoothing ε (e.g. 0.05 helps generalisation) |
 | `--grad_clip` | 1.0 | Max gradient norm (0 = disabled) |
-| **Resume** | | |
+| **Augmentation & Scheduling** | | |
 | `--augment` | off | Gaussian noise + feature masking on training sequences |
 | `--noise_std` | 0.02 | Std-dev of noise added per timestep during augmentation |
 | `--mask_prob` | 0.05 | Probability of masking an entire feature channel per sample |
