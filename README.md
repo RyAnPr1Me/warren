@@ -1,122 +1,278 @@
-# Stock Data Generator for AI Models
+# Warren — Advanced Stock Price Prediction AI
 
-This project generates feature-engineered stock data that can be used for training AI models for stock price prediction.
+A high-performance, feature-rich AI pipeline for stock price prediction.  
+Warren combines a **180+ feature engineering engine**, a **hybrid deep-learning model**, and a **professional interactive terminal UI** into one cohesive toolkit.
 
-## Features
+---
 
-The stock data generator includes:
+## ✨ Highlights
 
-- Technical indicators (RSI, MACD, Bollinger Bands, etc.)
-- Price patterns and candlestick patterns
-- Volatility measures
-- Moving averages and their derivatives
-- Momentum indicators
-- Volume-based indicators
-- Trend analysis features
-- Seasonality features (day of week, month)
-- Lagged variables for time series analysis
-- Market regime indicators
+| Category | What's included |
+|---|---|
+| **Data Engine** | 180+ TA indicators • Parallel download • Disk caching • Multi-timeframe • Market context (SPY/VIX/Sector ETFs) • Fundamental data • Multi-horizon targets |
+| **Models** | Hybrid BiLSTM + Multi-Head Attention + TCN (3 dilated layers) • Temporal Fusion Transformer (TFT) variant • Multi-task learning across 1/5/10/21-day horizons |
+| **Training** | AMP mixed-precision • OneCycleLR + warm-up • Early stopping • Walk-forward cross-validation • Optuna hyperparameter search |
+| **Terminal UI** | Rich live epoch table • Progress bars • Interactive wizard • Coloured metrics • Feature importance bar chart |
+| **Inference** | `predict.py` — one command real-time predictions with confidence bars |
 
-## Requirements
+---
 
-To install the required dependencies:
+## 🚀 Quick Start
 
+```bash
+# 1. Install dependencies
+pip install -r requirements.txt
+
+# 2. Launch interactive wizard (recommended for first run)
+python train_stock_model.py --interactive
+
+# 3. Or use defaults on 30 large-cap stocks
+python train_stock_model.py --save_results --visualize
 ```
+
+---
+
+## 📦 Installation
+
+```bash
+# TA-Lib C library (required first)
+# macOS:   brew install ta-lib
+# Ubuntu:  sudo apt-get install libta-lib-dev
+# Windows: download from https://www.ta-lib.org
+
 pip install -r requirements.txt
 ```
 
-Note: TA-Lib might require additional installation steps depending on your platform. 
-See [TA-Lib installation instructions](https://github.com/mrjbq7/ta-lib#dependencies) for details.
+**Dependencies:** `torch`, `numpy`, `pandas`, `yfinance`, `ta-lib`, `scikit-learn`, `matplotlib`, `seaborn`, `rich`, `optuna`, `scipy`
 
-## Usage
+---
 
-### Basic Usage
+## 🎮 Training Script — `train_stock_model.py`
 
-```python
-from stock_data_generator import get_feature_engineered_stock_data
+### Interactive Mode (wizard)
 
-# Generate ~10,000 rows of feature-engineered stock data
-stock_data = get_feature_engineered_stock_data()
-
-# Save to CSV
-stock_data.to_csv('stock_data_features.csv', index=False)
+```bash
+python train_stock_model.py --interactive
 ```
 
-### Advanced Usage
+Steps through symbol selection, date range, architecture choice, and hyperparameters with prompts, defaults, and confirmation.
+
+### CLI Examples
+
+```bash
+# Load a JSON config file
+python train_stock_model.py --config training_config.json
+
+# Use extended 100-stock universe with market context caching
+python train_stock_model.py --use_extended_symbols \
+    --cache_dir .cache --save_results --visualize
+
+# Temporal Fusion Transformer with multi-task learning
+python train_stock_model.py --model_type tft --multi_task --epochs 100
+
+# Walk-forward cross-validation (5 folds)
+python train_stock_model.py --walk_forward --n_splits 5
+
+# Optuna hyperparameter search (50 trials) + final train
+python train_stock_model.py --tune --n_trials 50 --save_results
+
+# Regression mode: predict actual return instead of direction
+python train_stock_model.py --is_regression --hidden_dim 256 --num_layers 3
+
+# Custom symbols + larger model
+python train_stock_model.py --symbols AAPL,MSFT,NVDA,TSLA,META \
+    --hidden_dim 256 --num_heads 8 --dropout 0.15 \
+    --batch_size 128 --epochs 100 --patience 15
+```
+
+### Key CLI Flags
+
+| Flag | Default | Description |
+|---|---|---|
+| `--interactive` | off | Launch configuration wizard |
+| `--config` | None | Path to JSON config file |
+| `--model_type` | `hybrid` | `hybrid` (BiLSTM+Attn+TCN) or `tft` |
+| `--multi_task` | off | Predict all 4 forecast horizons simultaneously |
+| `--walk_forward` | off | Walk-forward cross-validation |
+| `--tune` | off | Optuna hyperparameter optimisation |
+| `--n_trials` | 30 | Optuna trial count |
+| `--n_splits` | 5 | Walk-forward folds |
+| `--cache_dir` | None | Enable per-symbol data caching |
+| `--n_jobs` | 4 | Parallel download workers |
+| `--include_fundamentals` | off | Fetch P/E, beta, market cap, etc. |
+| `--silent` | off | Suppress rich terminal UI (for scripts) |
+
+---
+
+## 🔮 Inference — `predict.py`
+
+```bash
+# Predict next-day direction for AAPL
+python predict.py --symbol AAPL --model_dir models
+
+# Multi-symbol, 5-day horizon, save CSV
+python predict.py --symbol AAPL MSFT NVDA TSLA --horizon 5 --output preds.csv
+
+# Read symbols from file, show feature importance
+python predict.py --symbols_file watchlist.txt --show_features
+
+# All options
+python predict.py --symbol GOOGL \
+    --model_dir models \
+    --horizon 10 \
+    --lookback_days 500 \
+    --cache_dir .cache \
+    --top_features 20 \
+    --output predictions.csv
+```
+
+**Output columns:** `Symbol`, `Date`, `Close`, `Horizon_Days`, `Pred_Prob`, `Direction`, `Confidence`
+
+---
+
+## 📊 Feature Engineering — `stock_data_generator.py`
+
+### 180+ Features across 10 categories
+
+| Category | Examples |
+|---|---|
+| **Core** | Returns, log-returns, price ranges, gaps, volume changes |
+| **Moving Averages** | SMA/EMA (5,10,20,50,100,200), DEMA, TEMA, KAMA, Hull MA, WMA |
+| **Momentum** | RSI (7/14/21), MACD, Stochastic K/D, StochRSI, CCI, Williams %R, ROC, Aroon, ULTOSC, PPO, APO, Fisher Transform, Elder Ray |
+| **Volatility** | ATR, Bollinger Bands, Keltner Channels, Donchian Channels, Parkinson vol, Yang-Zhang vol, realized vol (5/10/20/30/60d) |
+| **Trend** | ADX, Parabolic SAR, Ichimoku Cloud (Tenkan/Kijun/SpanA/SpanB/Chikou), 52-week high/low |
+| **Volume** | OBV, MFI, Chaikin Money Flow, VWAP, ADOSC, volume ratio, volume surge |
+| **Multi-timeframe** | Weekly RSI, weekly MA 4/12, weekly momentum, monthly MA 3/12, monthly range |
+| **Market context** | SPY/QQQ/IWM correlation (20d), beta to SPY (60d), alpha vs SPY, VIX level, sector-ETF correlation |
+| **Regime** | Hurst exponent (63d/126d), mean-reversion flag, vol regime, price Z-score |
+| **Seasonality** | Day-of-week dummies, month dummies, quarter, is_month_end, is_quarter_end |
+
+### Multi-horizon targets
+
+| Target column | Description |
+|---|---|
+| `Target_Return_1d` / `Target_Direction_1d` | Next 1 trading day |
+| `Target_Return_5d` / `Target_Direction_5d` | Next 5 trading days (≈1 week) |
+| `Target_Return_10d` / `Target_Direction_10d` | Next 10 trading days (≈2 weeks) |
+| `Target_Return_21d` / `Target_Direction_21d` | Next 21 trading days (≈1 month) |
+
+### Python API
 
 ```python
 from stock_data_generator import (
-    get_feature_engineered_stock_data, 
-    normalize_features, 
-    split_train_test
+    get_feature_engineered_stock_data,
+    normalize_features,
+    split_train_test,
+    walk_forward_splits,
 )
 
-# Generate data with custom parameters
-stock_data = get_feature_engineered_stock_data(
-    symbols=['AAPL', 'MSFT', 'GOOGL', 'AMZN'],
-    start_date='2018-01-01',
-    end_date='2023-01-01',
-    min_rows=5000
+# Generate full featured dataset with caching and market context
+data = get_feature_engineered_stock_data(
+    symbols=["AAPL", "MSFT", "NVDA", "TSLA"],
+    start_date="2018-01-01",
+    cache_dir=".cache",          # speeds up repeated runs
+    n_jobs=4,                    # parallel downloads
+    include_market_context=True, # SPY, VIX, sector ETFs
+    include_fundamentals=True,   # P/E, beta, market cap
+    multi_horizon_targets=True,  # all 4 horizons
 )
 
-# Normalize the features
-normalized_data = normalize_features(stock_data)
+# Robust normalisation (median/IQR)
+norm = normalize_features(data, scaler_type="robust")
 
-# Split into training and test sets
-X_train, X_test, y_train, y_test = split_train_test(normalized_data, test_size=0.2)
+# Time-based train/test split
+X_train, X_test, y_train, y_test = split_train_test(norm, target_horizon=1)
+
+# Walk-forward splits for proper CV
+for X_tr, X_te, y_tr, y_te in walk_forward_splits(norm, n_splits=5):
+    # train and evaluate each fold...
+    pass
 ```
 
-## Data Description
+---
 
-The generated dataset includes the following categories of features:
+## 🧠 Model Architectures
 
-1. **Basic Price Data**
-   - Open, High, Low, Close prices
-   - Trading volume
-   - Returns and log returns
+### `hybrid` (default) — BiLSTM + Multi-Head Attention + TCN
 
-2. **Technical Indicators**
-   - Moving Averages (Simple and Exponential)
-   - RSI (Relative Strength Index)
-   - MACD (Moving Average Convergence Divergence)
-   - Bollinger Bands
-   - Stochastic Oscillator
-   - CCI (Commodity Channel Index)
-   - ADX (Average Directional Index)
-   - ATR (Average True Range)
+```
+Input → BiLSTM (bidirectional, N layers)
+      → Multi-Head Self-Attention
+      → LayerNorm
+      → 3× Dilated TCN Blocks (dilation 1, 2, 4)
+      → Static feature projection (last timestep)
+      → Fused representation
+      → FC → GELU → Dropout
+      → Output head(s)  [single or multi-task]
+      → Temperature scaling
+```
 
-3. **Volume Indicators**
-   - OBV (On-Balance Volume)
-   - Volume changes and trends
+### `tft` — Temporal Fusion Transformer
 
-4. **Volatility Measures**
-   - Historical volatility over different timeframes
-   - Price range and relative price range
+```
+Input → Variable Selection Network (per-feature GRN + softmax weights)
+      → LSTM encoder
+      → Gated Residual Network
+      → Interpretable Multi-Head Attention
+      → Post-attention GRN + residual
+      → Feed-forward GRN
+      → LayerNorm
+      → Output head(s)  [single or multi-task]
+      → Temperature scaling
+```
 
-5. **Trend Indicators**
-   - Price relative to moving averages
-   - Moving average slopes
-   - Bull/bear market indicators
+---
 
-6. **Pattern Recognition**
-   - Several candlestick patterns (Doji, Hammer, Engulfing, etc.)
+## 📁 Project Structure
 
-7. **Seasonality Features**
-   - Day of week
-   - Month
-   - Year
+```
+warren/
+├── stock_data_generator.py   # Feature engineering pipeline
+├── train_stock_model.py      # Model trainer with rich terminal UI
+├── predict.py                # Real-time inference script
+├── training_config.json      # Example JSON config for training
+├── requirements.txt
+└── README.md
+```
 
-8. **Lagged Features**
-   - Past returns and volume changes over various timeframes
-   - Rolling statistics (mean, std, min, max)
+---
 
-## Target Variables
+## 🔧 JSON Config
 
-The dataset includes two types of target variables for supervised learning:
+`training_config.json` is fully supported via `--config`:
 
-1. `Target_Next_Day_Return`: The actual return for the next trading day
-2. `Target_Next_Day_Direction`: Binary indicator (1 if next day's return is positive, 0 otherwise)
+```json
+{
+  "stocks": ["AAPL", "MSFT", "NVDA"],
+  "data_settings": {
+    "start_date": "2018-01-01",
+    "min_rows": 20000
+  },
+  "model_settings": {
+    "hidden_dim": 256,
+    "num_layers": 3,
+    "num_heads": 8,
+    "dropout": 0.15,
+    "bidirectional": true
+  },
+  "training_settings": {
+    "epochs": 100,
+    "batch_size": 128,
+    "learning_rate": 0.0005,
+    "patience": 15
+  }
+}
+```
 
-## License
+---
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+## ⚠️ Disclaimer
+
+This software is provided **for educational and research purposes only**.  
+Stock price predictions are inherently uncertain. **Do not use these predictions for real trading decisions.** Past model performance does not guarantee future results. Always consult a qualified financial advisor.
+
+---
+
+## 📄 License
+
+MIT License — see `LICENSE` for details.
