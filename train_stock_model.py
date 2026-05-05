@@ -1277,10 +1277,11 @@ def main(args) -> dict:
             cprint(f"  [dim]Data saved to {out_path}[/dim]")
 
     # ── Build config dict (JSON → wizard → CLI precedence) ────────────────────
-    _iv = lambda cli, wizard_k, json_k, default: (
-        cli if cli is not None else
-        wizard_cfg.get(wizard_k, json_cfg.get(json_k, default))
-    )
+    def _iv(cli, wizard_k, json_k, default):
+        """Resolve a config value: CLI flag > wizard > JSON file > hard default."""
+        if cli is not None:
+            return cli
+        return wizard_cfg.get(wizard_k, json_cfg.get(json_k, default))
     config = {
         "seed":           int(args.seed),
         "batch_size":     int(_iv(args.batch_size,    "batch_size",    "batch_size",    64)),

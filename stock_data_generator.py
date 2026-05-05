@@ -192,9 +192,21 @@ def _save_cache(cache_dir: Optional[str], key: str, obj) -> None:
 def _compute_hurst_exponent(series: pd.Series, max_lag: int = 20) -> float:
     """Estimate Hurst exponent via simplified R/S analysis.
 
-    H ≈ 0.5  → random walk
-    H > 0.5  → trending / long memory
-    H < 0.5  → mean-reverting
+    Parameters
+    ----------
+    series : pd.Series
+        Time series of returns (or prices) to analyse.
+    max_lag : int
+        Maximum lag length used in the R/S calculation.
+        Larger values give a more stable estimate but require more data.
+
+    Returns
+    -------
+    float
+        Hurst exponent in [0, 1]:
+        H ≈ 0.5  → random walk
+        H > 0.5  → trending / long memory
+        H < 0.5  → mean-reverting
     """
     ts = np.array(series.dropna())
     if len(ts) < max_lag * 2:
