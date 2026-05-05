@@ -626,6 +626,12 @@ def train_epoch(model: nn.Module, loader: DataLoader, optimizer: optim.Optimizer
                            for k in y_dict) / len(y_dict)
             else:
                 loss = criterion(out.view(-1), y.to(device, non_blocking=True).view(-1))
+        # Skip batches that produce NaN/Inf loss to prevent corrupting model weights.
+        # The epoch average is computed over finite-loss batches only (n tracks these),
+        # which is the correct representation of actual training progress.
+        if not torch.isfinite(loss):
+            logger.warning("Non-finite loss detected in batch, skipping update")
+            continue
         if use_amp:
             scaler.scale(loss).backward()
             if grad_clip > 0.0:

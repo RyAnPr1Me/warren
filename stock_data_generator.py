@@ -777,8 +777,11 @@ def _process_single_symbol(
         for k, v in fundamentals.items():
             df[k] = float(v) if v is not None else np.nan
 
-    # ── Drop rows dominated by NaN (from indicator warm-up) ──────────────────
-    df = df.dropna(subset=["MA_200", "RSI_14", "Ichimoku_Kijun"])
+    # ── Drop rows dominated by NaN (from indicator warm-up or missing targets) ─
+    # Include Target_Return_1d so the last row(s) with no valid forward return
+    # (where (NaN > 0).astype(int) would silently produce a false 0 label) are
+    # removed before training.
+    df = df.dropna(subset=["MA_200", "RSI_14", "Ichimoku_Kijun", "Target_Return_1d"])
 
     _save_cache(cache_dir, cache_key, df)
     logger.info(f"[{symbol}] Processed {len(df)} rows with {len(df.columns)} features.")
@@ -931,7 +934,15 @@ def normalize_features(
     numeric_cols = data[cols].select_dtypes(include=[np.number]).columns.tolist()
 
     scaler = RobustScaler() if scaler_type == "robust" else MinMaxScaler()
-    normalized[numeric_cols] = scaler.fit_transform(data[numeric_cols])
+    # Replace inf/-inf with NaN before fitting; otherwise the scaler's percentile
+    # computation is corrupted, producing NaN outputs for the entire column.
+    data_to_scale = data[numeric_cols].replace([np.inf, -np.inf], np.nan)
+    normalized[numeric_cols] = scaler.fit_transform(data_to_scale)
+    # Fill any remaining NaN with a neutral value that is meaningful for the
+    # chosen scaler: 0.0 for RobustScaler (= median after transform) or 0.5 for
+    # MinMaxScaler (= midrange of [0, 1]).
+    nan_fill = 0.0 if scaler_type == "robust" else 0.5
+    normalized[numeric_cols] = normalized[numeric_cols].fillna(nan_fill)
     return normalized
 
 
